@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:incidencias_ies/database/database_helper.dart';
+import 'package:incidencias_ies/database/database_seeder.dart';
 import 'package:incidencias_ies/main.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -16,9 +17,10 @@ void main() {
     await DatabaseHelper.instance.close();
   });
 
-  testWidgets('IncidenciasApp muestra la pantalla de estado de SQLite', (WidgetTester tester) async {
+  testWidgets('IncidenciasApp muestra la pantalla principal con pestañas y CRUD', (WidgetTester tester) async {
     await tester.runAsync(() async {
       await DatabaseHelper.instance.database;
+      await DatabaseSeeder().seedIfEmpty();
     });
 
     await tester.pumpWidget(const IncidenciasApp());
@@ -29,11 +31,10 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('IncidenciasIES — SQLite Status'), findsOneWidget);
-    expect(find.text('Base de Datos Conectada'), findsOneWidget);
-    expect(find.text('aula'), findsOneWidget);
-    expect(find.text('equipo'), findsOneWidget);
-    expect(find.text('incidencia'), findsOneWidget);
-    expect(find.text('comentario'), findsOneWidget);
+    expect(find.text('IncidenciasIES — CRUD & SQLite'), findsOneWidget);
+    expect(find.text('Incidencias'), findsOneWidget);
+    expect(find.text('Equipos y Aulas'), findsOneWidget);
+    expect(find.text('Estado BD'), findsOneWidget);
+    expect(find.text('Nueva Incidencia'), findsOneWidget);
   });
 }

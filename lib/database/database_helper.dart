@@ -6,7 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 class DatabaseHelper {
-  static const String _databaseName = 'incidencias.db';
+  static String _databaseName = 'incidencias.db';
   static const int _databaseVersion = 1;
 
   // Singleton instance
@@ -14,6 +14,12 @@ class DatabaseHelper {
   static Database? _database;
 
   DatabaseHelper._init();
+
+  @visibleForTesting
+  static void setDatabaseNameForTesting(String name) {
+    _databaseName = name;
+    _database = null;
+  }
 
   /// Inicializa el factory adecuado según la plataforma.
   /// - En Web: sqflite_common_ffi_web

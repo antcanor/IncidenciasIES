@@ -9,6 +9,7 @@ void main() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.setDatabaseNameForTesting('incidencias_widget_test.db');
   });
 
   tearDownAll(() async {

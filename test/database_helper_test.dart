@@ -9,10 +9,11 @@ void main() {
   setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.setDatabaseNameForTesting('incidencias_unit_test.db');
     
     // Limpiar BD para asegurar entorno de pruebas limpio
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'incidencias.db');
+    final path = join(dbPath, 'incidencias_unit_test.db');
     await databaseFactory.deleteDatabase(path);
   });
 

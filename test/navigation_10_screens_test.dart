@@ -135,6 +135,8 @@ void main() {
       expect(find.byType(NuevaIncidenciaScreen), findsOneWidget);
 
       // Cancelar y volver atrás
+      await tester.ensureVisible(find.text('Cancelar y Volver'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cancelar y Volver'));
       await tester.pumpAndSettle();
 
@@ -368,6 +370,8 @@ void main() {
       expect(find.byType(NuevaIncidenciaScreen), findsOneWidget);
 
       // Volver atrás
+      await tester.ensureVisible(find.text('Cancelar y Volver'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cancelar y Volver'));
       await tester.pumpAndSettle();
       expect(find.byType(IncidenciasListScreen), findsOneWidget);
@@ -399,6 +403,8 @@ void main() {
       expect(find.byType(NuevaAulaScreen), findsOneWidget);
 
       // Volver atrás
+      await tester.ensureVisible(find.text('Cancelar y Volver'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cancelar y Volver'));
       await tester.pumpAndSettle();
       expect(find.byType(AulasListScreen), findsOneWidget);
@@ -430,6 +436,8 @@ void main() {
       expect(find.byType(NuevoEquipoScreen), findsOneWidget);
 
       // Volver atrás
+      await tester.ensureVisible(find.text('Cancelar y Volver'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cancelar y Volver'));
       await tester.pumpAndSettle();
       expect(find.byType(EquiposListScreen), findsOneWidget);

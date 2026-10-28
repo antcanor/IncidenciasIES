@@ -59,8 +59,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Aula> _aulas = [];
   List<Equipo> _equipos = [];
-  List<Incidencia> _incidencias = [];
+  List<IncidenciaDetalle> _incidenciasDetalle = [];
   List<Comentario> _comentarios = [];
+
+  Map<Estado, int> _conteoEstado = {};
+  Map<Prioridad, int> _conteoPrioridad = {};
+  List<Map<String, dynamic>> _conteoPorAula = [];
+
+  int? _aulaFiltroId; // null = Todas las aulas
 
   @override
   void initState() {
@@ -74,8 +80,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final status = await DatabaseHelper.instance.checkDatabaseStatus();
     final aulas = await _aulaRepo.getAll();
     final equipos = await _equipoRepo.getAll();
-    final incidencias = await _incidenciaRepo.getAll();
     final comentarios = await _comentarioRepo.getAll();
+
+    // Consultas avanzadas para el Panel
+    final conteoEstado = await _incidenciaRepo.countByEstado();
+    final conteoPrioridad = await _incidenciaRepo.countByPrioridad();
+    final conteoPorAula = await _incidenciaRepo.countPorAula();
+
+    // Consulta con JOIN doble (incidencia -> equipo -> aula)
+    final List<IncidenciaDetalle> detalles;
+    if (_aulaFiltroId != null) {
+      detalles = await _incidenciaRepo.getIncidenciasPorAula(_aulaFiltroId!);
+    } else {
+      detalles = await _incidenciaRepo.getIncidenciasConDetalle();
+    }
 
     if (mounted) {
       setState(() {
@@ -83,8 +101,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _fksEnabled = status['foreignKeysEnabled'] as bool;
         _aulas = aulas;
         _equipos = equipos;
-        _incidencias = incidencias;
+        _incidenciasDetalle = detalles;
         _comentarios = comentarios;
+        _conteoEstado = conteoEstado;
+        _conteoPrioridad = conteoPrioridad;
+        _conteoPorAula = conteoPorAula;
         _loading = false;
       });
     }
@@ -103,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Color _getPrioridadColor(Prioridad p) {
     switch (p) {
       case Prioridad.urgente:
-        return Colors.red;
+        return Colors.red[700]!;
       case Prioridad.alta:
         return Colors.orange[800]!;
       case Prioridad.media:
@@ -131,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final equipo = _equipos.first;
     final nueva = Incidencia(
       equipoId: equipo.id!,
-      descripcion: 'Incidencia de prueba rápida creada desde UI (${DateTime.now().second}s)',
+      descripcion: 'Incidencia de prueba rápida (${DateTime.now().second}s)',
       prioridad: Prioridad.alta,
       estado: Estado.abierta,
       fecha: DateTime.now(),
@@ -150,33 +171,35 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadAllData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Incidencia eliminada con éxito')),
+        const SnackBar(content: Text('Incidencia eliminada')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalFilas = _aulas.length + _equipos.length + _incidencias.length + _comentarios.length;
+    final totalFilas = _aulas.length + _equipos.length + _incidenciasDetalle.length + _comentarios.length;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('IncidenciasIES — CRUD & SQLite'),
+          title: const Text('IncidenciasIES — Panel & Consultas'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Recargar datos',
+              tooltip: 'Recargar consultas',
               onPressed: _loadAllData,
             ),
           ],
           bottom: const TabBar(
+            isScrollable: true,
             tabs: [
-              Tab(icon: Icon(Icons.report_problem), text: 'Incidencias'),
+              Tab(icon: Icon(Icons.dashboard), text: 'Panel'),
+              Tab(icon: Icon(Icons.alt_route), text: 'JOIN Doble (Aulas)'),
               Tab(icon: Icon(Icons.devices), text: 'Equipos y Aulas'),
-              Tab(icon: Icon(Icons.info_outline), text: 'Estado BD'),
+              Tab(icon: Icon(Icons.storage), text: 'Estado BD'),
             ],
           ),
         ),
@@ -184,11 +207,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
                 children: [
-                  // Pestaña 1: Incidencias
-                  _buildIncidenciasTab(),
-                  // Pestaña 2: Equipos y Aulas
+                  _buildPanelTab(),
+                  _buildJoinDobleTab(),
                   _buildEquiposTab(),
-                  // Pestaña 3: Estado de la Base de Datos
                   _buildStatusTab(totalFilas),
                 ],
               ),
@@ -201,76 +222,234 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildIncidenciasTab() {
-    if (_incidencias.isEmpty) {
-      return const Center(child: Text('No hay incidencias registradas.'));
-    }
-
-    return ListView.builder(
+  /// Pestaña 1: Panel con COUNT por Estado y por Prioridad
+  Widget _buildPanelTab() {
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      itemCount: _incidencias.length,
-      itemBuilder: (context, index) {
-        final inc = _incidencias[index];
-        final equipo = _equipos.firstWhere(
-          (e) => e.id == inc.equipoId,
-          orElse: () => Equipo(aulaId: 0, tipo: 'Desconocido', codigo: 'ID-${inc.equipoId}'),
-        );
-        final comentarios = _comentarios.where((c) => c.incidenciaId == inc.id).toList();
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 1.5,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Métricas por Estado (COUNT)',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildMetricCard('Abiertas', _conteoEstado[Estado.abierta] ?? 0, Colors.red[700]!, Icons.error_outline),
+              _buildMetricCard('En Proceso', _conteoEstado[Estado.enProceso] ?? 0, Colors.blue[700]!, Icons.autorenew),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildMetricCard('Resueltas', _conteoEstado[Estado.resuelta] ?? 0, Colors.green[700]!, Icons.check_circle_outline),
+              _buildMetricCard('Cerradas', _conteoEstado[Estado.cerrada] ?? 0, Colors.grey[700]!, Icons.archive_outlined),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Métricas por Prioridad (COUNT)',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildMetricCard('Urgente', _conteoPrioridad[Prioridad.urgente] ?? 0, Colors.red[900]!, Icons.priority_high),
+              _buildMetricCard('Alta', _conteoPrioridad[Prioridad.alta] ?? 0, Colors.orange[800]!, Icons.trending_up),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildMetricCard('Media', _conteoPrioridad[Prioridad.media] ?? 0, Colors.amber[800]!, Icons.remove),
+              _buildMetricCard('Baja', _conteoPrioridad[Prioridad.baja] ?? 0, Colors.blueGrey, Icons.trending_down),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Incidencias por Aula (Agrupación)',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Card(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Incidencia #${inc.id} — ${equipo.codigo}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              children: _conteoPorAula.map((row) {
+                final nombre = row['aula_nombre'] as String;
+                final planta = row['aula_planta'] as int;
+                final total = row['total_incidencias'] as int;
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    child: Text('P$planta', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  ),
+                  title: Text(nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text('Planta $planta'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: total > 0 ? Colors.orange[100] : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                      tooltip: 'Eliminar incidencia',
-                      onPressed: () => _eliminarIncidencia(inc.id!),
+                    child: Text(
+                      '$total incidencias',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: total > 0 ? Colors.orange[900] : Colors.grey[700],
+                      ),
                     ),
-                  ],
-                ),
-                Text(
-                  inc.descripcion,
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Chip(
-                      label: Text(inc.prioridad.value, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                      backgroundColor: _getPrioridadColor(inc.prioridad),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                    ),
-                    const SizedBox(width: 8),
-                    Chip(
-                      label: Text(inc.estado.value, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                      backgroundColor: _getEstadoColor(inc.estado),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${comentarios.length} comentarios',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                );
+              }).toList(),
             ),
           ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String title, int count, Color color, IconData icon) {
+    return Expanded(
+      child: Card(
+        color: color.withValues(alpha: 0.08),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 26),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
+                  Text(
+                    '$count',
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Pestaña 2: JOIN Doble (incidencia -> equipo -> aula) con filtro por aula
+  Widget _buildJoinDobleTab() {
+    return Column(
+      children: [
+        // Filtro por Aula
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          color: Colors.grey[100],
+          child: Row(
+            children: [
+              const Icon(Icons.filter_list, size: 20, color: Color(0xFF1E3A8A)),
+              const SizedBox(width: 8),
+              const Text('Filtrar Aula:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButton<int?>(
+                  value: _aulaFiltroId,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Todas las aulas (JOIN completo)'),
+                    ),
+                    ..._aulas.map((a) => DropdownMenuItem<int?>(
+                          value: a.id,
+                          child: Text('${a.nombre} (Planta ${a.planta})'),
+                        )),
+                  ],
+                  onChanged: (val) {
+                    setState(() => _aulaFiltroId = val);
+                    _loadAllData();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Lista de incidencias con detalle
+        Expanded(
+          child: _incidenciasDetalle.isEmpty
+              ? const Center(child: Text('No hay incidencias para este filtro.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _incidenciasDetalle.length,
+                  itemBuilder: (context, index) {
+                    final det = _incidenciasDetalle[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      elevation: 1.5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.meeting_room, size: 16, color: Color(0xFF1E3A8A)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      det.aulaNombre,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Text(' (P${det.aulaPlanta})', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                  ],
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                  tooltip: 'Eliminar incidencia',
+                                  onPressed: () => _eliminarIncidencia(det.id),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.devices, size: 15, color: Colors.teal),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${det.equipoCodigo} • ${det.equipoTipo}',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.teal),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(det.descripcion, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Chip(
+                                  label: Text(det.prioridad.value, style: const TextStyle(fontSize: 11, color: Colors.white)),
+                                  backgroundColor: _getPrioridadColor(det.prioridad),
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                const SizedBox(width: 8),
+                                Chip(
+                                  label: Text(det.estado.value, style: const TextStyle(fontSize: 11, color: Colors.white)),
+                                  backgroundColor: _getEstadoColor(det.estado),
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -346,47 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text('Desglose por tabla:', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildCountCard('Aulas', _aulas.length, Icons.meeting_room, Colors.blue),
-              _buildCountCard('Equipos', _equipos.length, Icons.devices, Colors.teal),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildCountCard('Incidencias', _incidencias.length, Icons.report_problem, Colors.orange),
-              _buildCountCard('Comentarios', _comentarios.length, Icons.comment, Colors.green),
-            ],
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCountCard(String title, int count, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        color: color.withValues(alpha: 0.08),
-        child: Padding(
-          padding: const EdgeInsets.all(14.0),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-                  Text('$count filas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color)),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

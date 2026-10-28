@@ -31,8 +31,9 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('IncidenciasIES — CRUD & SQLite'), findsOneWidget);
-    expect(find.text('Incidencias'), findsOneWidget);
+    expect(find.text('IncidenciasIES — Panel & Consultas'), findsOneWidget);
+    expect(find.text('Panel'), findsOneWidget);
+    expect(find.text('JOIN Doble (Aulas)'), findsOneWidget);
     expect(find.text('Equipos y Aulas'), findsOneWidget);
     expect(find.text('Estado BD'), findsOneWidget);
     expect(find.text('Nueva Incidencia'), findsOneWidget);

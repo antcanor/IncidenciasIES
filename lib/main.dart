@@ -140,36 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Desconocida';
   }
 
-  Future<void> _crearIncidenciaRapida() async {
-    List<Equipo> equipos = _equiposCtrl.equipos;
-    if (equipos.isEmpty) {
-      await _equiposCtrl.loadEquipos();
-      equipos = _equiposCtrl.equipos;
-    }
-    if (equipos.isEmpty) return;
-
-    final equipo = equipos.first;
-    final nueva = Incidencia(
-      equipoId: equipo.id!,
-      descripcion: 'Incidencia creada con ChangeNotifier MVC (${DateTime.now().second}s)',
-      prioridad: Prioridad.alta,
-      estado: Estado.abierta,
-      fecha: DateTime.now(),
-    );
-
-    await _incidenciasCtrl.createIncidencia(nueva);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Incidencia creada y lista refrescada reactivamente'),
-          duration: Duration(milliseconds: 1500),
-        ),
-      );
-    }
-  }
-
   Future<void> _cerrarIncidencia(int id) async {
     await _incidenciasCtrl.cerrarIncidencia(id);
     if (mounted) {
@@ -234,7 +204,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: _crearIncidenciaRapida,
+          onPressed: () async {
+            final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia);
+            if (res == true) {
+              await _incidenciasCtrl.loadIncidencias();
+            }
+          },
           icon: const Icon(Icons.add),
           label: const Text('Nueva Incidencia'),
         ),
@@ -362,6 +337,55 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Card(
+                elevation: 0,
+                color: colorScheme.primaryContainer.withValues(alpha: 0.4),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        child: const Icon(Icons.add_alert_outlined),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Gestión de Incidencias',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Reportar averías en equipos o aulas',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () async {
+                          final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia);
+                          if (res == true) {
+                            await _incidenciasCtrl.loadIncidencias();
+                          }
+                        },
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Nueva'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Métricas por Estado (COUNT)',
                 style: theme.textTheme.titleMedium,

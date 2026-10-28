@@ -5,6 +5,7 @@ import 'controllers/controllers.dart';
 import 'database/database_helper.dart';
 import 'database/database_seeder.dart';
 import 'models/models.dart';
+import 'theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,38 +18,46 @@ void main() async {
   final seeder = DatabaseSeeder();
   await seeder.seedIfEmpty();
 
-  runApp(const IncidenciasApp());
+  final themeController = ThemeController();
+
+  runApp(IncidenciasApp(themeController: themeController));
 }
 
 class IncidenciasApp extends StatelessWidget {
   final IncidenciasController? incidenciasCtrl;
   final AulasController? aulasCtrl;
   final EquiposController? equiposCtrl;
+  final ThemeController? themeController;
 
   const IncidenciasApp({
     super.key,
     this.incidenciasCtrl,
     this.aulasCtrl,
     this.equiposCtrl,
+    this.themeController,
   });
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'IncidenciasIES',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E3A8A),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
-      home: HomeScreen(
-        incidenciasCtrl: incidenciasCtrl,
-        aulasCtrl: aulasCtrl,
-        equiposCtrl: equiposCtrl,
-      ),
+    final themeCtrl = themeController ?? ThemeController();
+
+    return ListenableBuilder(
+      listenable: themeCtrl,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'IncidenciasIES',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeCtrl.themeMode,
+          home: HomeScreen(
+            incidenciasCtrl: incidenciasCtrl,
+            aulasCtrl: aulasCtrl,
+            equiposCtrl: equiposCtrl,
+            themeController: themeCtrl,
+          ),
+        );
+      },
     );
   }
 }
@@ -57,12 +66,14 @@ class HomeScreen extends StatefulWidget {
   final IncidenciasController? incidenciasCtrl;
   final AulasController? aulasCtrl;
   final EquiposController? equiposCtrl;
+  final ThemeController? themeController;
 
   const HomeScreen({
     super.key,
     this.incidenciasCtrl,
     this.aulasCtrl,
     this.equiposCtrl,
+    this.themeController,
   });
 
   @override
@@ -74,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final IncidenciasController _incidenciasCtrl;
   late final AulasController _aulasCtrl;
   late final EquiposController _equiposCtrl;
+  late final ThemeController _themeCtrl;
 
   String? _dbPath;
   bool _fksEnabled = false;
@@ -84,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _incidenciasCtrl = widget.incidenciasCtrl ?? IncidenciasController();
     _aulasCtrl = widget.aulasCtrl ?? AulasController();
     _equiposCtrl = widget.equiposCtrl ?? EquiposController();
+    _themeCtrl = widget.themeController ?? ThemeController();
 
     _inicializarDatos();
   }
@@ -93,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.incidenciasCtrl == null) _incidenciasCtrl.dispose();
     if (widget.aulasCtrl == null) _aulasCtrl.dispose();
     if (widget.equiposCtrl == null) _equiposCtrl.dispose();
+    if (widget.themeController == null) _themeCtrl.dispose();
     super.dispose();
   }
 
@@ -124,32 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Desconocida';
   }
 
-  Color _getPrioridadColor(Prioridad p) {
-    switch (p) {
-      case Prioridad.urgente:
-        return Colors.red[700]!;
-      case Prioridad.alta:
-        return Colors.orange[800]!;
-      case Prioridad.media:
-        return Colors.amber[800]!;
-      case Prioridad.baja:
-        return Colors.blueGrey;
-    }
-  }
-
-  Color _getEstadoColor(Estado e) {
-    switch (e) {
-      case Estado.abierta:
-        return Colors.red[700]!;
-      case Estado.enProceso:
-        return Colors.blue[700]!;
-      case Estado.resuelta:
-        return Colors.green[700]!;
-      case Estado.cerrada:
-        return Colors.grey[700]!;
-    }
-  }
-
   Future<void> _crearIncidenciaRapida() async {
     List<Equipo> equipos = _equiposCtrl.equipos;
     if (equipos.isEmpty) {
@@ -167,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
       fecha: DateTime.now(),
     );
 
-    // El controlador añade la incidencia y notifica mediante ListenableBuilder
     await _incidenciasCtrl.createIncidencia(nueva);
 
     if (mounted) {
@@ -196,22 +183,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return DefaultTabController(
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('IncidenciasIES — MVC con ListenableBuilder'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('IncidenciasIES — Material 3'),
           actions: [
+            // Botón para cambiar entre Tema Claro y Tema Oscuro
+            ListenableBuilder(
+              listenable: _themeCtrl,
+              builder: (context, _) {
+                final isDark = _themeCtrl.isDarkMode;
+                return IconButton(
+                  key: const Key('theme_toggle_button'),
+                  icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                  tooltip: isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
+                  onPressed: _themeCtrl.toggleTheme,
+                );
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: 'Recargar controladores',
               onPressed: _inicializarDatos,
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
-            tabs: [
+            indicatorColor: colorScheme.primary,
+            labelColor: colorScheme.onPrimary,
+            tabs: const [
               Tab(icon: Icon(Icons.dashboard), text: 'Panel'),
               Tab(icon: Icon(Icons.alt_route), text: 'Incidencias (JOIN)'),
               Tab(icon: Icon(Icons.devices), text: 'Equipos y Aulas'),
@@ -221,13 +224,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: TabBarView(
           children: [
-            // 1. Pestaña Panel reactiva
             _buildPanelTab(),
-            // 2. Pestaña Incidencias con ListenableBuilder
             _buildIncidenciasJoinTab(),
-            // 3. Pestaña Equipos y Aulas reactiva
             _buildEquiposTab(),
-            // 4. Pestaña Estado BD
             _buildStatusTab(),
           ],
         ),
@@ -240,8 +239,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Pestaña 1: Panel reactivo con ListenableBuilder para métricas
+  /// Pestaña 1: Panel con métricas integradas con el Tema Material 3
   Widget _buildPanelTab() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final incidenciasColors = theme.extension<IncidenciasColors>()!;
+
     return ListenableBuilder(
       listenable: _incidenciasCtrl,
       builder: (context, _) {
@@ -260,47 +263,87 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 'Métricas por Estado (COUNT)',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 children: [
-                  _buildMetricCard('Abiertas', conteoEstado[Estado.abierta] ?? 0, Colors.red[700]!, Icons.error_outline),
-                  _buildMetricCard('En Proceso', conteoEstado[Estado.enProceso] ?? 0, Colors.blue[700]!, Icons.autorenew),
+                  _buildMetricCard(
+                    'Abiertas',
+                    conteoEstado[Estado.abierta] ?? 0,
+                    incidenciasColors.estadoAbierta,
+                    Icons.error_outline,
+                  ),
+                  _buildMetricCard(
+                    'En Proceso',
+                    conteoEstado[Estado.enProceso] ?? 0,
+                    incidenciasColors.estadoEnProceso,
+                    Icons.autorenew,
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  _buildMetricCard('Resueltas', conteoEstado[Estado.resuelta] ?? 0, Colors.green[700]!, Icons.check_circle_outline),
-                  _buildMetricCard('Cerradas', conteoEstado[Estado.cerrada] ?? 0, Colors.grey[700]!, Icons.archive_outlined),
+                  _buildMetricCard(
+                    'Resueltas',
+                    conteoEstado[Estado.resuelta] ?? 0,
+                    incidenciasColors.estadoResuelta,
+                    Icons.check_circle_outline,
+                  ),
+                  _buildMetricCard(
+                    'Cerradas',
+                    conteoEstado[Estado.cerrada] ?? 0,
+                    incidenciasColors.estadoCerrada,
+                    Icons.archive_outlined,
+                  ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Text(
                 'Métricas por Prioridad (COUNT)',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 children: [
-                  _buildMetricCard('Urgente', conteoPrioridad[Prioridad.urgente] ?? 0, Colors.red[900]!, Icons.priority_high),
-                  _buildMetricCard('Alta', conteoPrioridad[Prioridad.alta] ?? 0, Colors.orange[800]!, Icons.trending_up),
+                  _buildMetricCard(
+                    'Urgente',
+                    conteoPrioridad[Prioridad.urgente] ?? 0,
+                    incidenciasColors.prioridadUrgente,
+                    Icons.priority_high,
+                  ),
+                  _buildMetricCard(
+                    'Alta',
+                    conteoPrioridad[Prioridad.alta] ?? 0,
+                    incidenciasColors.prioridadAlta,
+                    Icons.trending_up,
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  _buildMetricCard('Media', conteoPrioridad[Prioridad.media] ?? 0, Colors.amber[800]!, Icons.remove),
-                  _buildMetricCard('Baja', conteoPrioridad[Prioridad.baja] ?? 0, Colors.blueGrey, Icons.trending_down),
+                  _buildMetricCard(
+                    'Media',
+                    conteoPrioridad[Prioridad.media] ?? 0,
+                    incidenciasColors.prioridadMedia,
+                    Icons.remove,
+                  ),
+                  _buildMetricCard(
+                    'Baja',
+                    conteoPrioridad[Prioridad.baja] ?? 0,
+                    incidenciasColors.prioridadBaja,
+                    Icons.trending_down,
+                  ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Text(
                 'Incidencias por Aula (JOIN doble & COUNT)',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Card(
                 child: Column(
                   children: conteoPorAula.map((row) {
@@ -309,22 +352,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     final total = row['total_incidencias'] as int;
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: const Color(0xFF1E3A8A),
-                        child: Text('P$planta', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        backgroundColor: colorScheme.primaryContainer,
+                        foregroundColor: colorScheme.onPrimaryContainer,
+                        child: Text(
+                          'P$planta',
+                          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      title: Text(nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('Planta $planta'),
+                      title: Text(nombre, style: theme.textTheme.titleSmall),
+                      subtitle: Text('Planta $planta', style: theme.textTheme.bodySmall),
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: total > 0 ? Colors.orange[100] : Colors.grey[200],
+                          color: total > 0 ? colorScheme.tertiaryContainer : colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
                           '$total incidencias',
-                          style: TextStyle(
+                          style: theme.textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: total > 0 ? Colors.orange[900] : Colors.grey[700],
+                            color: total > 0 ? colorScheme.onTertiaryContainer : colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -339,25 +386,44 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMetricCard(String title, int count, Color color, IconData icon) {
+  Widget _buildMetricCard(String title, int count, Color accentColor, IconData icon) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Expanded(
       child: Card(
-        color: color.withValues(alpha: 0.08),
-        child: Padding(
+        color: colorScheme.surface,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: accentColor.withValues(alpha: 0.35),
+              width: 1.2,
+            ),
+          ),
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              Icon(icon, color: color, size: 26),
+              Icon(icon, color: accentColor, size: 26),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-                  Text(
-                    '$count',
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$count',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -366,8 +432,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Pestaña 2: Vista de Incidencias actualizada con ListenableBuilder (JOIN doble y botón cerrar)
+  /// Pestaña 2: Vista de Incidencias con colores semánticos de Tema
   Widget _buildIncidenciasJoinTab() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final incidenciasColors = theme.extension<IncidenciasColors>()!;
+
     return ListenableBuilder(
       listenable: Listenable.merge([_incidenciasCtrl, _aulasCtrl]),
       builder: (context, _) {
@@ -377,29 +447,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Column(
           children: [
-            // Filtro por aula
+            // Filtro por aula usando surfaceContainerHighest
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: Colors.grey[100],
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
               child: Row(
                 children: [
-                  const Icon(Icons.filter_list, size: 20, color: Color(0xFF1E3A8A)),
+                  Icon(Icons.filter_list, size: 20, color: colorScheme.primary),
                   const SizedBox(width: 8),
-                  const Text('Filtrar Aula:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Filtrar Aula:', style: theme.textTheme.titleSmall),
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButton<int?>(
                       value: filtroAulaId,
                       isExpanded: true,
+                      dropdownColor: colorScheme.surface,
                       underline: const SizedBox(),
                       items: [
-                        const DropdownMenuItem<int?>(
+                        DropdownMenuItem<int?>(
                           value: null,
-                          child: Text('Todas las aulas (JOIN completo)'),
+                          child: Text('Todas las aulas (JOIN completo)', style: theme.textTheme.bodyMedium),
                         ),
                         ...aulas.map((a) => DropdownMenuItem<int?>(
                               value: a.id,
-                              child: Text('${a.nombre} (Planta ${a.planta})'),
+                              child: Text('${a.nombre} (Planta ${a.planta})', style: theme.textTheme.bodyMedium),
                             )),
                       ],
                       onChanged: (val) {
@@ -415,17 +486,18 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _incidenciasCtrl.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : incidencias.isEmpty
-                      ? const Center(child: Text('No hay incidencias para este filtro.'))
+                      ? Center(child: Text('No hay incidencias para este filtro.', style: theme.textTheme.bodyMedium))
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: incidencias.length,
                           itemBuilder: (context, index) {
                             final det = incidencias[index];
                             final bool esCerrada = det.estado == Estado.cerrada;
+                            final colorPrioridad = incidenciasColors.colorParaPrioridad(det.prioridad);
+                            final colorEstado = incidenciasColors.colorParaEstado(det.estado);
 
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
-                              elevation: 1.5,
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
@@ -436,17 +508,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                       children: [
                                         Row(
                                           children: [
-                                            const Icon(Icons.meeting_room, size: 16, color: Color(0xFF1E3A8A)),
+                                            Icon(Icons.meeting_room, size: 16, color: colorScheme.primary),
                                             const SizedBox(width: 4),
                                             Text(
                                               det.aulaNombre,
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                              style: theme.textTheme.titleSmall,
                                             ),
-                                            Text(' (P${det.aulaPlanta})', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                            Text(
+                                              ' (P${det.aulaPlanta})',
+                                              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                                            ),
                                           ],
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                          icon: Icon(Icons.delete_outline, color: colorScheme.error, size: 20),
                                           tooltip: 'Eliminar incidencia',
                                           onPressed: () => _incidenciasCtrl.deleteIncidencia(det.id),
                                         ),
@@ -455,41 +530,55 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        const Icon(Icons.devices, size: 15, color: Colors.teal),
+                                        Icon(Icons.devices, size: 15, color: colorScheme.secondary),
                                         const SizedBox(width: 4),
                                         Text(
                                           '${det.equipoCodigo} • ${det.equipoTipo}',
-                                          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.teal),
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: colorScheme.secondary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    Text(det.descripcion, style: const TextStyle(fontSize: 14)),
+                                    Text(det.descripcion, style: theme.textTheme.bodyMedium),
                                     const SizedBox(height: 12),
                                     Row(
                                       children: [
                                         Chip(
-                                          label: Text(det.prioridad.value, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                                          backgroundColor: _getPrioridadColor(det.prioridad),
+                                          label: Text(
+                                            det.prioridad.value,
+                                            style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
+                                          ),
+                                          backgroundColor: colorPrioridad,
                                           visualDensity: VisualDensity.compact,
-                                          padding: EdgeInsets.zero,
+                                          side: BorderSide.none,
                                         ),
                                         const SizedBox(width: 8),
                                         Chip(
-                                          label: Text(det.estado.value, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                                          backgroundColor: _getEstadoColor(det.estado),
+                                          label: Text(
+                                            det.estado.value,
+                                            style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
+                                          ),
+                                          backgroundColor: colorEstado,
                                           visualDensity: VisualDensity.compact,
-                                          padding: EdgeInsets.zero,
+                                          side: BorderSide.none,
                                         ),
                                         const Spacer(),
-                                        // Botón para CERRAR incidencia sin recargar pantalla
                                         if (!esCerrada)
                                           TextButton.icon(
                                             onPressed: () => _cerrarIncidencia(det.id),
-                                            icon: const Icon(Icons.check, size: 16, color: Colors.green),
-                                            label: const Text('Cerrar', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                            icon: Icon(Icons.check, size: 16, color: colorScheme.secondary),
+                                            label: Text(
+                                              'Cerrar',
+                                              style: TextStyle(
+                                                color: colorScheme.secondary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                             style: TextButton.styleFrom(
-                                              backgroundColor: Colors.green[50],
+                                              backgroundColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
                                               visualDensity: VisualDensity.compact,
                                             ),
                                           ),
@@ -508,8 +597,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Pestaña 3: Equipos y Aulas reactivo con ListenableBuilder
+  /// Pestaña 3: Equipos y Aulas
   Widget _buildEquiposTab() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return ListenableBuilder(
       listenable: Listenable.merge([_aulasCtrl, _equiposCtrl]),
       builder: (context, _) {
@@ -531,15 +623,21 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               child: ExpansionTile(
                 initiallyExpanded: true,
-                leading: const Icon(Icons.meeting_room, color: Color(0xFF1E3A8A)),
-                title: Text(aula.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('Planta ${aula.planta} • ${equiposAula.length} equipos asignados'),
+                leading: Icon(Icons.meeting_room, color: colorScheme.primary),
+                title: Text(aula.nombre, style: theme.textTheme.titleMedium),
+                subtitle: Text(
+                  'Planta ${aula.planta} • ${equiposAula.length} equipos asignados',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
                 children: equiposAula.map((eq) {
                   return ListTile(
-                    leading: const Icon(Icons.devices, size: 20),
-                    title: Text(eq.codigo, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(eq.tipo),
-                    trailing: Text('ID #${eq.id}', style: const TextStyle(color: Colors.grey)),
+                    leading: Icon(Icons.devices, size: 20, color: colorScheme.secondary),
+                    title: Text(eq.codigo, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    subtitle: Text(eq.tipo, style: theme.textTheme.bodySmall),
+                    trailing: Text(
+                      'ID #${eq.id}',
+                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                    ),
                   );
                 }).toList(),
               ),
@@ -550,8 +648,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Pestaña 4: Estado BD reactivo con ListenableBuilder
+  /// Pestaña 4: Estado BD con estilo adaptativo
   Widget _buildStatusTab() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return ListenableBuilder(
       listenable: Listenable.merge([_aulasCtrl, _equiposCtrl, _incidenciasCtrl]),
       builder: (context, _) {
@@ -565,37 +666,45 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Card(
-                elevation: 2,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Estado de la Base de Datos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const Divider(),
+                      Text('Estado de la Base de Datos', style: theme.textTheme.titleMedium),
+                      const Divider(height: 24),
                       ListTile(
                         dense: true,
-                        leading: const Icon(Icons.computer),
-                        title: const Text('Plataforma activa'),
-                        subtitle: Text(_platformName),
+                        leading: Icon(Icons.computer, color: colorScheme.primary),
+                        title: Text('Plataforma activa', style: theme.textTheme.titleSmall),
+                        subtitle: Text(_platformName, style: theme.textTheme.bodySmall),
                       ),
                       ListTile(
                         dense: true,
-                        leading: const Icon(Icons.vpn_key),
-                        title: const Text('PRAGMA foreign_keys'),
-                        subtitle: Text(_fksEnabled ? 'ON (1 - Activadas)' : 'OFF (Desactivadas)'),
+                        leading: Icon(Icons.vpn_key, color: colorScheme.primary),
+                        title: Text('PRAGMA foreign_keys', style: theme.textTheme.titleSmall),
+                        subtitle: Text(
+                          _fksEnabled ? 'ON (1 - Activadas)' : 'OFF (Desactivadas)',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: _fksEnabled ? colorScheme.primary : colorScheme.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       ListTile(
                         dense: true,
-                        leading: const Icon(Icons.storage),
-                        title: const Text('Total registros en memoria reactiva'),
-                        subtitle: Text('$totalFilas registros sincronizados por ChangeNotifier'),
+                        leading: Icon(Icons.storage, color: colorScheme.primary),
+                        title: Text('Total registros sincronizados', style: theme.textTheme.titleSmall),
+                        subtitle: Text(
+                          '$totalFilas registros sincronizados en ChangeNotifier',
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ),
                       ListTile(
                         dense: true,
-                        leading: const Icon(Icons.folder_open),
-                        title: const Text('Ruta SQLite'),
-                        subtitle: SelectableText(_dbPath ?? ''),
+                        leading: Icon(Icons.folder_open, color: colorScheme.primary),
+                        title: Text('Ruta SQLite', style: theme.textTheme.titleSmall),
+                        subtitle: SelectableText(_dbPath ?? '', style: theme.textTheme.bodySmall),
                       ),
                     ],
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:incidencias_ies/controllers/controllers.dart';
 import 'package:incidencias_ies/database/database_helper.dart';
 import 'package:incidencias_ies/database/database_seeder.dart';
 import 'package:incidencias_ies/main.dart';
@@ -18,24 +19,38 @@ void main() {
   });
 
   testWidgets('IncidenciasApp muestra la pantalla principal con pestañas y CRUD', (WidgetTester tester) async {
+    final incidenciasCtrl = IncidenciasController();
+    final aulasCtrl = AulasController();
+    final equiposCtrl = EquiposController();
+
     await tester.runAsync(() async {
       await DatabaseHelper.instance.database;
       await DatabaseSeeder().seedIfEmpty();
+
+      await Future.wait([
+        aulasCtrl.loadAulas(),
+        equiposCtrl.loadEquipos(),
+        incidenciasCtrl.loadIncidencias(),
+      ]);
     });
 
-    await tester.pumpWidget(const IncidenciasApp());
-
-    await tester.runAsync(() async {
-      await Future.delayed(const Duration(milliseconds: 300));
-    });
-
+    await tester.pumpWidget(IncidenciasApp(
+      incidenciasCtrl: incidenciasCtrl,
+      aulasCtrl: aulasCtrl,
+      equiposCtrl: equiposCtrl,
+    ));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('IncidenciasIES — Panel & Consultas'), findsOneWidget);
+    expect(find.text('IncidenciasIES — MVC con ListenableBuilder'), findsOneWidget);
     expect(find.text('Panel'), findsOneWidget);
-    expect(find.text('JOIN Doble (Aulas)'), findsOneWidget);
+    expect(find.text('Incidencias (JOIN)'), findsOneWidget);
     expect(find.text('Equipos y Aulas'), findsOneWidget);
     expect(find.text('Estado BD'), findsOneWidget);
     expect(find.text('Nueva Incidencia'), findsOneWidget);
+
+    incidenciasCtrl.dispose();
+    aulasCtrl.dispose();
+    equiposCtrl.dispose();
   });
 }

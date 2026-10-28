@@ -1,0 +1,10 @@
+export 'aula_detalle_screen.dart';
+export 'aulas_list_screen.dart';
+export 'equipo_detalle_screen.dart';
+export 'equipos_list_screen.dart';
+export 'incidencia_detalle_screen.dart';
+export 'incidencias_list_screen.dart';
+export 'nueva_aula_screen.dart';
+export 'nueva_incidencia_screen.dart';
+export 'nuevo_equipo_screen.dart';
+export 'panel_screen.dart';

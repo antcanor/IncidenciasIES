@@ -6,16 +6,10 @@ import 'database_helper.dart';
 class DatabaseSeeder {
   final DatabaseHelper _dbHelper;
   late final AulaRepository _aulaRepo;
-  late final EquipoRepository _equipoRepo;
-  late final IncidenciaRepository _incidenciaRepo;
-  late final ComentarioRepository _comentarioRepo;
 
   DatabaseSeeder([DatabaseHelper? dbHelper])
       : _dbHelper = dbHelper ?? DatabaseHelper.instance {
     _aulaRepo = AulaRepository(_dbHelper);
-    _equipoRepo = EquipoRepository(_dbHelper);
-    _incidenciaRepo = IncidenciaRepository(_dbHelper);
-    _comentarioRepo = ComentarioRepository(_dbHelper);
   }
 
   /// Carga datos iniciales de ejemplo si la base de datos se encuentra vacía.
@@ -78,7 +72,7 @@ class DatabaseSeeder {
         codigo: 'IMP-3D-TALLER',
       ).toMap(includeId: false));
 
-      final eq5Id = await txn.insert('equipo', Equipo(
+      await txn.insert('equipo', Equipo(
         aulaId: aula3Id,
         tipo: 'Switch Gestionable 24p',
         codigo: 'SW-RACK-01',
@@ -95,7 +89,7 @@ class DatabaseSeeder {
         fecha: now.subtract(const Duration(days: 2)),
       ).toMap(includeId: false));
 
-      final inc2Id = await txn.insert('incidencia', Incidencia(
+      await txn.insert('incidencia', Incidencia(
         equipoId: eq2Id,
         descripcion: 'Teclado con teclas bloqueadas por líquido',
         prioridad: Prioridad.baja,

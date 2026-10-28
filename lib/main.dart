@@ -5,6 +5,7 @@ import 'controllers/controllers.dart';
 import 'database/database_helper.dart';
 import 'database/database_seeder.dart';
 import 'models/models.dart';
+import 'routes/app_routes.dart';
 import 'theme/theme.dart';
 
 void main() async {
@@ -50,6 +51,7 @@ class IncidenciasApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeCtrl.themeMode,
+          onGenerateRoute: AppRoutes.onGenerateRoute,
           home: HomeScreen(
             incidenciasCtrl: incidenciasCtrl,
             aulasCtrl: aulasCtrl,
@@ -222,6 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+        drawer: _buildAppDrawer(context),
         body: TabBarView(
           children: [
             _buildPanelTab(),
@@ -235,6 +238,104 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.add),
           label: const Text('Nueva Incidencia'),
         ),
+      ),
+    );
+  }
+
+  /// Menú Drawer con acceso directo a las 10 rutas
+  Widget _buildAppDrawer(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(color: colorScheme.primary),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Icon(Icons.school, color: colorScheme.onPrimary, size: 32),
+                const SizedBox(height: 6),
+                Text(
+                  'IncidenciasIES',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Navegación entre 10 Pantallas',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dashboard_outlined),
+            title: const Text('Panel de Control'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.panel);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.report_problem_outlined),
+            title: const Text('Incidencias'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.incidencias);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.add_alert_outlined),
+            title: const Text('Nueva Incidencia'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.nuevaIncidencia);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.meeting_room_outlined),
+            title: const Text('Aulas'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.aulas);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.add_business_outlined),
+            title: const Text('Nueva Aula'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.nuevaAula);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.devices_outlined),
+            title: const Text('Equipos'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.equipos);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.post_add_outlined),
+            title: const Text('Nuevo Equipo'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.nuevoEquipo);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -498,93 +599,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(Icons.meeting_room, size: 16, color: colorScheme.primary),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              det.aulaNombre,
-                                              style: theme.textTheme.titleSmall,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.incidenciaDetalle,
+                                  arguments: det.id,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(Icons.meeting_room, size: 16, color: colorScheme.primary),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                det.aulaNombre,
+                                                style: theme.textTheme.titleSmall,
+                                              ),
+                                              Text(
+                                                ' (P${det.aulaPlanta})',
+                                                style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                                              ),
+                                            ],
+                                          ),
+                                          Row(
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.info_outline, color: colorScheme.primary, size: 20),
+                                                tooltip: 'Ver detalle incidencia #${det.id}',
+                                                onPressed: () => Navigator.pushNamed(
+                                                  context,
+                                                  AppRoutes.incidenciaDetalle,
+                                                  arguments: det.id,
+                                                ),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.delete_outline, color: colorScheme.error, size: 20),
+                                                tooltip: 'Eliminar incidencia',
+                                                onPressed: () => _incidenciasCtrl.deleteIncidencia(det.id),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.devices, size: 15, color: colorScheme.secondary),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${det.equipoCodigo} • ${det.equipoTipo}',
+                                            style: theme.textTheme.bodyMedium?.copyWith(
+                                              color: colorScheme.secondary,
+                                              fontWeight: FontWeight.w600,
                                             ),
-                                            Text(
-                                              ' (P${det.aulaPlanta})',
-                                              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                                            ),
-                                          ],
-                                        ),
-                                        IconButton(
-                                          icon: Icon(Icons.delete_outline, color: colorScheme.error, size: 20),
-                                          tooltip: 'Eliminar incidencia',
-                                          onPressed: () => _incidenciasCtrl.deleteIncidencia(det.id),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.devices, size: 15, color: colorScheme.secondary),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${det.equipoCodigo} • ${det.equipoTipo}',
-                                          style: theme.textTheme.bodyMedium?.copyWith(
-                                            color: colorScheme.secondary,
-                                            fontWeight: FontWeight.w600,
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(det.descripcion, style: theme.textTheme.bodyMedium),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Chip(
-                                          label: Text(
-                                            det.prioridad.value,
-                                            style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
-                                          ),
-                                          backgroundColor: colorPrioridad,
-                                          visualDensity: VisualDensity.compact,
-                                          side: BorderSide.none,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Chip(
-                                          label: Text(
-                                            det.estado.value,
-                                            style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
-                                          ),
-                                          backgroundColor: colorEstado,
-                                          visualDensity: VisualDensity.compact,
-                                          side: BorderSide.none,
-                                        ),
-                                        const Spacer(),
-                                        if (!esCerrada)
-                                          TextButton.icon(
-                                            onPressed: () => _cerrarIncidencia(det.id),
-                                            icon: Icon(Icons.check, size: 16, color: colorScheme.secondary),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(det.descripcion, style: theme.textTheme.bodyMedium),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Chip(
                                             label: Text(
-                                              'Cerrar',
-                                              style: TextStyle(
-                                                color: colorScheme.secondary,
-                                                fontWeight: FontWeight.bold,
+                                              det.prioridad.value,
+                                              style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
+                                            ),
+                                            backgroundColor: colorPrioridad,
+                                            visualDensity: VisualDensity.compact,
+                                            side: BorderSide.none,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Chip(
+                                            label: Text(
+                                              det.estado.value,
+                                              style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
+                                            ),
+                                            backgroundColor: colorEstado,
+                                            visualDensity: VisualDensity.compact,
+                                            side: BorderSide.none,
+                                          ),
+                                          const Spacer(),
+                                          if (!esCerrada)
+                                            TextButton.icon(
+                                              onPressed: () => _cerrarIncidencia(det.id),
+                                              icon: Icon(Icons.check, size: 16, color: colorScheme.secondary),
+                                              label: Text(
+                                                'Cerrar',
+                                                style: TextStyle(
+                                                  color: colorScheme.secondary,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              style: TextButton.styleFrom(
+                                                backgroundColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                                                visualDensity: VisualDensity.compact,
                                               ),
                                             ),
-                                            style: TextButton.styleFrom(
-                                              backgroundColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                                              visualDensity: VisualDensity.compact,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
@@ -623,10 +745,18 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               child: ExpansionTile(
                 initiallyExpanded: true,
-                leading: Icon(Icons.meeting_room, color: colorScheme.primary),
+                leading: IconButton(
+                  icon: Icon(Icons.meeting_room, color: colorScheme.primary),
+                  tooltip: 'Ver detalle de ${aula.nombre}',
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.aulaDetalle,
+                    arguments: aula.id,
+                  ),
+                ),
                 title: Text(aula.nombre, style: theme.textTheme.titleMedium),
                 subtitle: Text(
-                  'Planta ${aula.planta} • ${equiposAula.length} equipos asignados',
+                  'Planta ${aula.planta} • ${equiposAula.length} equipos asignados (Toca para detalle)',
                   style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                 ),
                 children: equiposAula.map((eq) {
@@ -634,9 +764,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: Icon(Icons.devices, size: 20, color: colorScheme.secondary),
                     title: Text(eq.codigo, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                     subtitle: Text(eq.tipo, style: theme.textTheme.bodySmall),
-                    trailing: Text(
-                      'ID #${eq.id}',
-                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'ID #${eq.id}',
+                          style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_forward_ios, size: 12),
+                      ],
+                    ),
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.equipoDetalle,
+                      arguments: eq.id,
                     ),
                   );
                 }).toList(),

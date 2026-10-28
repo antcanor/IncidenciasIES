@@ -52,7 +52,10 @@ class AppRoutes {
       case incidenciaDetalle:
         final int id = (settings.arguments as int?) ?? 1;
         return MaterialPageRoute(
-          builder: (_) => IncidenciaDetalleScreen(incidenciaId: id),
+          builder: (_) => IncidenciaDetalleScreen(
+            incidenciaId: id,
+            incidenciasController: defaultIncidenciasController,
+          ),
           settings: settings,
         );
 

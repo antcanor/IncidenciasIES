@@ -87,6 +87,13 @@ class IncidenciasController extends ChangeNotifier {
 
       final modificada = existente.copyWith(estado: Estado.cerrada);
       await _repository.update(modificada);
+
+      // Actualizar inmediatamente en memoria para reactividad instantánea
+      final index = _incidencias.indexWhere((i) => i.id == id);
+      if (index != -1) {
+        _incidencias[index] = _incidencias[index].copyWith(estado: Estado.cerrada);
+      }
+
       await _refreshData();
       notifyListeners();
       return true;
@@ -105,6 +112,13 @@ class IncidenciasController extends ChangeNotifier {
 
       final modificada = existente.copyWith(estado: nuevoEstado);
       await _repository.update(modificada);
+
+      // Actualizar inmediatamente en memoria
+      final index = _incidencias.indexWhere((i) => i.id == id);
+      if (index != -1) {
+        _incidencias[index] = _incidencias[index].copyWith(estado: nuevoEstado);
+      }
+
       await _refreshData();
       notifyListeners();
       return true;
@@ -112,6 +126,16 @@ class IncidenciasController extends ChangeNotifier {
       _errorMessage = 'Error al cambiar estado: $e';
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Obtiene los datos enriquecidos de una incidencia con JOIN doble (equipo y aula).
+  Future<IncidenciaDetalle?> getIncidenciaDetalle(int id) async {
+    try {
+      return await _repository.getIncidenciaConDetalleById(id);
+    } catch (e) {
+      _errorMessage = 'Error al obtener detalle de la incidencia: $e';
+      return null;
     }
   }
 

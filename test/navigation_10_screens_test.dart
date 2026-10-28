@@ -403,6 +403,8 @@ void main() {
       expect(find.byType(IncidenciaDetalleScreen), findsOneWidget);
 
       // Volver atrás
+      await tester.ensureVisible(find.text('Volver al Listado'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Volver al Listado'));
       await tester.pumpAndSettle();
       expect(find.byType(IncidenciasListScreen), findsOneWidget);
@@ -423,6 +425,10 @@ void main() {
       await tester.tap(find.text('Cancelar y Volver'));
       await tester.pumpAndSettle();
       expect(find.byType(IncidenciasListScreen), findsOneWidget);
+
+      // Esperar a que el temporizador interno de sqflite_common_ffi concluya
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('12. Navegación cruzada: De AulasListScreen a AulaDetalleScreen y NuevaAulaScreen', (tester) async {

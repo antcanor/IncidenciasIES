@@ -166,6 +166,33 @@ class IncidenciaRepository {
     return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
   }
 
+  /// Consulta con JOIN doble (incidencia -> equipo -> aula) para una incidencia concreta por su ID.
+  Future<IncidenciaDetalle?> getIncidenciaConDetalleById(int id) async {
+    final db = await _db;
+    const sql = '''
+      SELECT 
+        i.id AS id,
+        i.equipo_id AS equipo_id,
+        i.descripcion AS descripcion,
+        i.prioridad AS prioridad,
+        i.estado AS estado,
+        i.fecha AS fecha,
+        e.tipo AS equipo_tipo,
+        e.codigo AS equipo_codigo,
+        a.id AS aula_id,
+        a.nombre AS aula_nombre,
+        a.planta AS aula_planta
+      FROM incidencia i
+      INNER JOIN equipo e ON i.equipo_id = e.id
+      INNER JOIN aula a ON e.aula_id = a.id
+      WHERE i.id = ?
+      LIMIT 1
+    ''';
+    final maps = await db.rawQuery(sql, [id]);
+    if (maps.isEmpty) return null;
+    return IncidenciaDetalle.fromMap(maps.first);
+  }
+
   /// Conteo de incidencias agrupadas por Estado (COUNT por estado para el Panel).
   /// Inicializa todos los estados posibles con 0 por defecto si no existen filas.
   Future<Map<Estado, int>> countByEstado() async {

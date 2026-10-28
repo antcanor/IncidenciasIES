@@ -115,6 +115,35 @@ class IncidenciasController extends ChangeNotifier {
     }
   }
 
+  /// Cambia la prioridad de una incidencia, persiste el cambio en SQLite y refresca métricas (RA1.g).
+  Future<bool> cambiarPrioridad(int id, Prioridad nuevaPrioridad) async {
+    try {
+      final existente = await _repository.getById(id);
+      if (existente == null) {
+        _errorMessage = 'No se encontró la incidencia con ID $id';
+        notifyListeners();
+        return false;
+      }
+
+      final modificada = existente.copyWith(prioridad: nuevaPrioridad);
+      await _repository.update(modificada);
+
+      // Actualizar inmediatamente en memoria para respuesta instantánea (RA1.g)
+      final index = _incidencias.indexWhere((i) => i.id == id);
+      if (index != -1) {
+        _incidencias[index] = _incidencias[index].copyWith(prioridad: nuevaPrioridad);
+      }
+
+      await _refreshData();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Error al cambiar prioridad: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Elimina una incidencia y actualiza la lista y recuentos del panel.
   Future<bool> deleteIncidencia(int id) async {
     try {

@@ -57,6 +57,34 @@ class IncidenciaDetalle {
     );
   }
 
+  IncidenciaDetalle copyWith({
+    int? id,
+    int? equipoId,
+    String? descripcion,
+    Prioridad? prioridad,
+    Estado? estado,
+    DateTime? fecha,
+    String? equipoTipo,
+    String? equipoCodigo,
+    int? aulaId,
+    String? aulaNombre,
+    int? aulaPlanta,
+  }) {
+    return IncidenciaDetalle(
+      id: id ?? this.id,
+      equipoId: equipoId ?? this.equipoId,
+      descripcion: descripcion ?? this.descripcion,
+      prioridad: prioridad ?? this.prioridad,
+      estado: estado ?? this.estado,
+      fecha: fecha ?? this.fecha,
+      equipoTipo: equipoTipo ?? this.equipoTipo,
+      equipoCodigo: equipoCodigo ?? this.equipoCodigo,
+      aulaId: aulaId ?? this.aulaId,
+      aulaNombre: aulaNombre ?? this.aulaNombre,
+      aulaPlanta: aulaPlanta ?? this.aulaPlanta,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

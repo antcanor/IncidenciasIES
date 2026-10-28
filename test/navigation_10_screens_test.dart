@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:incidencias_ies/controllers/controllers.dart';
 import 'package:incidencias_ies/database/database_helper.dart';
 import 'package:incidencias_ies/database/database_seeder.dart';
 import 'package:incidencias_ies/routes/app_routes.dart';
@@ -9,15 +10,39 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late IncidenciasController sharedIncidencias;
+  late AulasController sharedAulas;
+  late EquiposController sharedEquipos;
+
   setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
     DatabaseHelper.setDatabaseNameForTesting('incidencias_navigation_test.db');
     await DatabaseHelper.instance.database;
     await DatabaseSeeder().seedIfEmpty();
+
+    sharedIncidencias = IncidenciasController();
+    sharedAulas = AulasController();
+    sharedEquipos = EquiposController();
+
+    await Future.wait([
+      sharedIncidencias.loadIncidencias(),
+      sharedAulas.loadAulas(),
+      sharedEquipos.loadEquipos(),
+    ]);
+
+    AppRoutes.defaultIncidenciasController = sharedIncidencias;
+    AppRoutes.defaultAulasController = sharedAulas;
+    AppRoutes.defaultEquiposController = sharedEquipos;
   });
 
   tearDownAll(() async {
+    AppRoutes.defaultIncidenciasController = null;
+    AppRoutes.defaultAulasController = null;
+    AppRoutes.defaultEquiposController = null;
+    sharedIncidencias.dispose();
+    sharedAulas.dispose();
+    sharedEquipos.dispose();
     await DatabaseHelper.instance.close();
   });
 
@@ -368,6 +393,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Pulsar primer item de la lista
+      await tester.ensureVisible(find.text('PC-101-01 no enciende tras tormenta'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('PC-101-01 no enciende tras tormenta'));
       await tester.pumpAndSettle();
 
@@ -484,6 +511,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(IncidenciasListScreen), findsOneWidget);
+
+      // Esperar a que los temporizadores de sqflite se completen
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
 
       // Volver a panel
       final NavigatorState navigator = tester.state(find.byType(Navigator));

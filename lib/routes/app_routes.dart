@@ -15,6 +15,10 @@ class AppRoutes {
   static const String equipoDetalle = '/equipos/detalle';
   static const String nuevoEquipo = '/equipos/nuevo';
 
+  static IncidenciasController? defaultIncidenciasController;
+  static AulasController? defaultAulasController;
+  static EquiposController? defaultEquiposController;
+
   static final List<String> allRoutes = [
     panel,
     incidencias,
@@ -32,15 +36,16 @@ class AppRoutes {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case panel:
-        final ctrl = settings.arguments as IncidenciasController?;
+        final ctrl = (settings.arguments as IncidenciasController?) ?? defaultIncidenciasController;
         return MaterialPageRoute(
           builder: (_) => PanelScreen(controller: ctrl),
           settings: settings,
         );
 
       case incidencias:
+        final ctrl = (settings.arguments as IncidenciasController?) ?? defaultIncidenciasController;
         return MaterialPageRoute(
-          builder: (_) => const IncidenciasListScreen(),
+          builder: (_) => IncidenciasListScreen(controller: ctrl),
           settings: settings,
         );
 
@@ -54,7 +59,12 @@ class AppRoutes {
       case nuevaIncidencia:
         final int? eqId = settings.arguments as int?;
         return MaterialPageRoute(
-          builder: (_) => NuevaIncidenciaScreen(equipoId: eqId),
+          builder: (_) => NuevaIncidenciaScreen(
+            equipoId: eqId,
+            incidenciasCtrl: defaultIncidenciasController,
+            aulasCtrl: defaultAulasController,
+            equiposCtrl: defaultEquiposController,
+          ),
           settings: settings,
         );
 

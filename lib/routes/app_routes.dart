@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../controllers/controllers.dart';
 import '../screens/screens.dart';
 
 class AppRoutes {
@@ -31,8 +32,9 @@ class AppRoutes {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case panel:
+        final ctrl = settings.arguments as IncidenciasController?;
         return MaterialPageRoute(
-          builder: (_) => const PanelScreen(),
+          builder: (_) => PanelScreen(controller: ctrl),
           settings: settings,
         );
 

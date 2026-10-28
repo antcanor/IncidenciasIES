@@ -1,9 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:incidencias_ies/database/database_helper.dart';
+import 'package:incidencias_ies/database/database_seeder.dart';
 import 'package:incidencias_ies/routes/app_routes.dart';
 import 'package:incidencias_ies/screens/screens.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.setDatabaseNameForTesting('incidencias_navigation_test.db');
+    await DatabaseHelper.instance.database;
+    await DatabaseSeeder().seedIfEmpty();
+  });
+
+  tearDownAll(() async {
+    await DatabaseHelper.instance.close();
+  });
+
   group('Pruebas de Rutas y Navegación entre 10 Pantallas (AppRoutes)', () {
     test('Deben existir exactamente 10 rutas registradas en AppRoutes.allRoutes', () {
       expect(AppRoutes.allRoutes.length, 10);
@@ -368,6 +385,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NuevaIncidenciaScreen), findsOneWidget);
+
+      // Esperar a que los temporizadores de sqflite se completen
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
 
       // Volver atrás
       await tester.ensureVisible(find.text('Cancelar y Volver'));

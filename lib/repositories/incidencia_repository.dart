@@ -87,6 +87,19 @@ class IncidenciaRepository {
     return maps.map((map) => Incidencia.fromMap(map)).toList();
   }
 
+  /// Cuenta incidencias que se encuentran en cualquiera de los estados indicados.
+  Future<int> countByStates(Iterable<Estado> states) async {
+    final values = states.map((state) => state.value).toList();
+    if (values.isEmpty) return 0;
+    final db = await _db;
+    final placeholders = List.filled(values.length, '?').join(', ');
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS total FROM incidencia WHERE estado IN ($placeholders)',
+      values,
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
   /// Filtra incidencias por su nivel de prioridad.
   Future<List<Incidencia>> getByPrioridad(Prioridad prioridad) async {
     final db = await _db;

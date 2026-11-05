@@ -1,10 +1,17 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 
 import '../controllers/controllers.dart';
 import '../models/models.dart';
+import '../services/services.dart';
 import '../theme/theme.dart';
 import 'prototipo/export_visual_incidencia.dart';
 
@@ -22,6 +29,7 @@ class NuevaIncidenciaScreen extends StatefulWidget {
   final AulasController? aulasCtrl;
   final EquiposController? equiposCtrl;
   final VoidCallback? onDictadoVoz;
+  final bool enableShakeDetection;
 
   const NuevaIncidenciaScreen({
     super.key,
@@ -30,6 +38,7 @@ class NuevaIncidenciaScreen extends StatefulWidget {
     this.aulasCtrl,
     this.equiposCtrl,
     this.onDictadoVoz,
+    this.enableShakeDetection = true,
   });
 
   @override
@@ -51,8 +60,12 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
   bool _isSaving = false;
   final SpeechToText _speech = SpeechToText();
   final FlutterTts _tts = FlutterTts();
+  final VoiceCommandService _voiceCommandService = VoiceCommandService();
   bool _speechAvailable = false;
   bool _isListening = false;
+  bool _isCommandListening = false;
+  StreamSubscription<UserAccelerometerEvent>? _shakeSubscription;
+  DateTime? _lastShakeAt;
   String? _speechError;
 
   @override
@@ -64,6 +77,42 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
 
     _selectedEquipoId = widget.equipoId;
     _cargarDatos();
+    if (widget.enableShakeDetection) {
+      _suscribirSacudida();
+    }
+  }
+
+  void _suscribirSacudida() {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return;
+    }
+    _shakeSubscription =
+        userAccelerometerEventStream(
+          samplingPeriod: SensorInterval.normalInterval,
+        ).listen(
+          (event) {
+            final magnitude = math.sqrt(
+              event.x * event.x + event.y * event.y + event.z * event.z,
+            );
+            final now = DateTime.now();
+            final cooldown =
+                _lastShakeAt == null ||
+                now.difference(_lastShakeAt!) > const Duration(seconds: 2);
+            if (magnitude >= 15 && cooldown && !_isSaving) {
+              _lastShakeAt = now;
+              unawaited(crearIncidenciaPorSacudida());
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!mounted) return;
+            setState(() {
+              _speechError =
+                  'El sensor de movimiento no está disponible: $error';
+            });
+          },
+        );
   }
 
   Future<void> _inicializarVoz() async {
@@ -73,6 +122,7 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
           if (!mounted) return;
           setState(() {
             _isListening = false;
+            _isCommandListening = false;
             _speechError = error.errorMsg;
           });
         },
@@ -106,8 +156,11 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
           setState(() {
             _selectedAulaId = match.first.aulaId;
           });
+          return;
         }
       }
+
+      setState(() {});
     } catch (_) {
       // Ignorar en tests de navegación sin BD
     }
@@ -115,10 +168,53 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
 
   @override
   void dispose() {
-    _speech.stop();
-    _tts.stop();
+    _shakeSubscription?.cancel();
+    unawaited(_detenerServiciosDeVoz());
     _descripcionCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _detenerServiciosDeVoz() async {
+    try {
+      await _speech.stop();
+    } on MissingPluginException {
+      // El plugin no está registrado en los tests de escritorio.
+    }
+    try {
+      await _tts.stop();
+    } on MissingPluginException {
+      // El plugin no está registrado en los tests de escritorio.
+    }
+  }
+
+  Future<bool> crearIncidenciaPorSacudida() async {
+    if (_selectedEquipoId == null || _selectedAulaId == null) {
+      if (mounted) {
+        setState(() {
+          _selectedPrioridad = Prioridad.urgente;
+          _speechError =
+              'Selecciona un aula y un equipo antes de usar la sacudida.';
+        });
+      }
+      return false;
+    }
+
+    setState(() {
+      _selectedPrioridad = Prioridad.urgente;
+      if (_descripcionCtrl.text.trim().isEmpty) {
+        _descripcionCtrl.text = 'Incidencia urgente detectada por sacudida';
+      }
+    });
+    final saved = await guardarIncidencia();
+    if (saved && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          key: Key('snackbar_sacudida_guardada'),
+          content: Text('Incidencia urgente creada por sacudida.'),
+        ),
+      );
+    }
+    return saved;
   }
 
   Future<void> activarDictadoVoz() async {
@@ -174,6 +270,59 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
         isEnglish ? 'Description dictated' : 'Descripción dictada',
       );
     }
+  }
+
+  Future<void> activarOrdenVoz() async {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    if (!_speechAvailable) {
+      await _inicializarVoz();
+    }
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      setState(
+        () => _speechError = 'El reconocimiento de órdenes no está disponible en este dispositivo.',
+      );
+      return;
+    }
+    if (_isCommandListening) {
+      await _speech.stop();
+      return;
+    }
+
+    setState(() {
+      _speechError = null;
+      _isCommandListening = true;
+    });
+    await _speech.listen(
+      onResult: _onVoiceCommandResult,
+      listenOptions: SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: ListenMode.dictation,
+        localeId: isEnglish ? 'en_US' : 'es_ES',
+      ),
+    );
+  }
+
+  Future<void> _onVoiceCommandResult(SpeechRecognitionResult result) async {
+    if (!result.finalResult || result.recognizedWords.trim().isEmpty) return;
+    if (mounted) setState(() => _isCommandListening = false);
+    await ejecutarOrdenVoz(result.recognizedWords);
+  }
+
+  Future<VoiceCommandResult> ejecutarOrdenVoz(String command) async {
+    final result = await _voiceCommandService.execute(command);
+    if (mounted) {
+      await _incidenciasCtrl.loadIncidencias();
+    }
+    final isEnglish =
+        mounted && Localizations.localeOf(context).languageCode == 'en';
+    await _tts.setLanguage(isEnglish ? 'en-US' : 'es-ES');
+    await _tts.speak(result.message);
+    if (mounted && !result.successful) {
+      setState(() => _speechError = result.message);
+    }
+    return result;
   }
 
   Future<bool> guardarIncidencia() async {
@@ -380,6 +529,35 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        key: const Key('btn_orden_voz'),
+                        onPressed: activarOrdenVoz,
+                        icon: Icon(
+                          _isCommandListening
+                              ? Icons.stop
+                              : Icons.record_voice_over,
+                        ),
+                        label: Text(
+                          _isCommandListening
+                              ? 'Escuchando orden...'
+                              : 'Orden por voz',
+                        ),
+                      ),
+                      if (_isCommandListening)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Text(
+                            'Di: «Cierra la incidencia del proyector del aula 12» o «Cuántas incidencias abiertas hay».',
+                            key: Key('estado_orden_voz'),
+                          ),
+                        ),
+                      OutlinedButton.icon(
+                        key: const Key('btn_sacudida_urgente'),
+                        onPressed: crearIncidenciaPorSacudida,
+                        icon: const Icon(Icons.vibration),
+                        label: const Text('Simular sacudida: crear urgente'),
                       ),
                       if (_isListening || _speechError != null) ...[
                         const SizedBox(height: 8),

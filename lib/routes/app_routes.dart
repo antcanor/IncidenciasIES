@@ -24,6 +24,7 @@ class AppRoutes {
   static IncidenciasController? defaultIncidenciasController;
   static AulasController? defaultAulasController;
   static EquiposController? defaultEquiposController;
+  static bool enableShakeDetection = true;
 
   static final List<String> allRoutes = [
     panel,
@@ -116,6 +117,7 @@ class AppRoutes {
             incidenciasCtrl: incCtrl ?? defaultIncidenciasController,
             aulasCtrl: aCtrl ?? defaultAulasController,
             equiposCtrl: eqCtrl ?? defaultEquiposController,
+            enableShakeDetection: enableShakeDetection,
           ),
           settings: settings,
         );

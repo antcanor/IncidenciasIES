@@ -173,6 +173,32 @@ class IncidenciaRepository {
     return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
   }
 
+  /// Obtiene el historial completo de un equipo para la superposición AR.
+  Future<List<IncidenciaDetalle>> getIncidenciasPorEquipo(int equipoId) async {
+    final db = await _db;
+    const sql = '''
+      SELECT
+        i.id AS id,
+        i.equipo_id AS equipo_id,
+        i.descripcion AS descripcion,
+        i.prioridad AS prioridad,
+        i.estado AS estado,
+        i.fecha AS fecha,
+        e.tipo AS equipo_tipo,
+        e.codigo AS equipo_codigo,
+        a.id AS aula_id,
+        a.nombre AS aula_nombre,
+        a.planta AS aula_planta
+      FROM incidencia i
+      INNER JOIN equipo e ON i.equipo_id = e.id
+      INNER JOIN aula a ON e.aula_id = a.id
+      WHERE i.equipo_id = ?
+      ORDER BY i.fecha DESC
+    ''';
+    final maps = await db.rawQuery(sql, [equipoId]);
+    return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
+  }
+
   /// Consulta con JOIN doble (incidencia -> equipo -> aula) para todas las incidencias.
   Future<List<IncidenciaDetalle>> getIncidenciasConDetalle() async {
     final db = await _db;

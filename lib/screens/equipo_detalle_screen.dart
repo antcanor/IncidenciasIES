@@ -73,6 +73,20 @@ class EquipoDetalleScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          FilledButton.icon(
+            key: const Key('btn_vista_ar'),
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRoutes.arView,
+              arguments: {
+                'equipoId': equipoId,
+                'equipoLabel': current?.codigo,
+              },
+            ),
+            icon: const Icon(Icons.view_in_ar),
+            label: const Text('Ver historial en vista AR'),
+          ),
+          const SizedBox(height: 12),
           Center(
             child: ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),

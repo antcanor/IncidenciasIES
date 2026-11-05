@@ -20,6 +20,7 @@ class AppRoutes {
   static const String equipoDetalle = '/equipos/detalle';
   static const String nuevoEquipo = '/equipos/nuevo';
   static const String ajustes = '/ajustes';
+  static const String arView = '/ar';
 
   static IncidenciasController? defaultIncidenciasController;
   static AulasController? defaultAulasController;
@@ -79,6 +80,17 @@ class AppRoutes {
             localeController:
                 args?['localeController'] as LocaleController? ??
                 LocaleController(),
+          ),
+          settings: settings,
+        );
+
+      case arView:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final equipoId = args?['equipoId'] as int? ?? 0;
+        return MaterialPageRoute(
+          builder: (_) => ArViewScreen(
+            equipoId: equipoId,
+            equipoLabel: args?['equipoLabel'] as String?,
           ),
           settings: settings,
         );

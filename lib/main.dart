@@ -1,12 +1,14 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'controllers/controllers.dart';
 import 'database/database_helper.dart';
 import 'database/database_seeder.dart';
 import 'models/models.dart';
 import 'routes/app_routes.dart';
 import 'theme/theme.dart';
+import 'settings/settings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +31,7 @@ class IncidenciasApp extends StatelessWidget {
   final AulasController? aulasCtrl;
   final EquiposController? equiposCtrl;
   final ThemeController? themeController;
+  final LocaleController? localeController;
 
   const IncidenciasApp({
     super.key,
@@ -36,14 +39,16 @@ class IncidenciasApp extends StatelessWidget {
     this.aulasCtrl,
     this.equiposCtrl,
     this.themeController,
+    this.localeController,
   });
 
   @override
   Widget build(BuildContext context) {
     final themeCtrl = themeController ?? ThemeController();
+    final localeCtrl = localeController ?? LocaleController();
 
     return ListenableBuilder(
-      listenable: themeCtrl,
+      listenable: Listenable.merge([themeCtrl, localeCtrl]),
       builder: (context, _) {
         return MaterialApp(
           title: 'IncidenciasIES',
@@ -51,12 +56,20 @@ class IncidenciasApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeCtrl.themeMode,
+          locale: localeCtrl.locale,
+          supportedLocales: AppStrings.supportedLocales,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           onGenerateRoute: AppRoutes.onGenerateRoute,
           home: HomeScreen(
             incidenciasCtrl: incidenciasCtrl,
             aulasCtrl: aulasCtrl,
             equiposCtrl: equiposCtrl,
             themeController: themeCtrl,
+            localeController: localeCtrl,
           ),
         );
       },
@@ -69,6 +82,7 @@ class HomeScreen extends StatefulWidget {
   final AulasController? aulasCtrl;
   final EquiposController? equiposCtrl;
   final ThemeController? themeController;
+  final LocaleController? localeController;
 
   const HomeScreen({
     super.key,
@@ -76,6 +90,7 @@ class HomeScreen extends StatefulWidget {
     this.aulasCtrl,
     this.equiposCtrl,
     this.themeController,
+    this.localeController,
   });
 
   @override
@@ -88,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final AulasController _aulasCtrl;
   late final EquiposController _equiposCtrl;
   late final ThemeController _themeCtrl;
+  late final LocaleController _localeCtrl;
 
   String? _dbPath;
   bool _fksEnabled = false;
@@ -99,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _aulasCtrl = widget.aulasCtrl ?? AulasController();
     _equiposCtrl = widget.equiposCtrl ?? EquiposController();
     _themeCtrl = widget.themeController ?? ThemeController();
+    _localeCtrl = widget.localeController ?? LocaleController();
 
     _inicializarDatos();
   }
@@ -109,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.aulasCtrl == null) _aulasCtrl.dispose();
     if (widget.equiposCtrl == null) _equiposCtrl.dispose();
     if (widget.themeController == null) _themeCtrl.dispose();
+    if (widget.localeController == null) _localeCtrl.dispose();
     super.dispose();
   }
 
@@ -284,6 +302,21 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.pop(context);
               Navigator.pushNamed(context, AppRoutes.historial, arguments: _incidenciasCtrl);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Ajustes'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(
+                context,
+                AppRoutes.ajustes,
+                arguments: {
+                  'themeController': _themeCtrl,
+                  'localeController': _localeCtrl,
+                },
+              );
             },
           ),
           const Divider(),

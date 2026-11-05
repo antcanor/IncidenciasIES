@@ -5,6 +5,7 @@ export 'equipos_list_screen.dart';
 export 'incidencia_detalle_screen.dart';
 export 'incidencias_list_screen.dart';
 export 'historial_screen.dart';
+export 'ajustes_screen.dart';
 export 'nueva_aula_screen.dart';
 export 'nueva_incidencia_screen.dart';
 export 'nuevo_equipo_screen.dart';

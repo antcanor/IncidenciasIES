@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+
 import '../controllers/controllers.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
@@ -45,6 +49,11 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
   Prioridad _selectedPrioridad = Prioridad.alta;
   final Estado _selectedEstado = Estado.abierta;
   bool _isSaving = false;
+  final SpeechToText _speech = SpeechToText();
+  final FlutterTts _tts = FlutterTts();
+  bool _speechAvailable = false;
+  bool _isListening = false;
+  String? _speechError;
 
   @override
   void initState() {
@@ -57,6 +66,31 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
     _cargarDatos();
   }
 
+  Future<void> _inicializarVoz() async {
+    try {
+      final available = await _speech.initialize(
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _isListening = false;
+            _speechError = error.errorMsg;
+          });
+        },
+        onStatus: (status) {
+          if (!mounted) return;
+          setState(() => _isListening = status == 'listening');
+        },
+      );
+      if (mounted) setState(() => _speechAvailable = available);
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _speechError = 'No se pudo inicializar el dictado: $error',
+        );
+      }
+    }
+  }
+
   Future<void> _cargarDatos() async {
     try {
       if (_aulasCtrl.aulas.isEmpty) await _aulasCtrl.loadAulas();
@@ -65,7 +99,9 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
       if (!mounted) return;
 
       if (_selectedEquipoId != null) {
-        final match = _equiposCtrl.equipos.where((e) => e.id == _selectedEquipoId);
+        final match = _equiposCtrl.equipos.where(
+          (e) => e.id == _selectedEquipoId,
+        );
         if (match.isNotEmpty) {
           setState(() {
             _selectedAulaId = match.first.aulaId;
@@ -79,32 +115,65 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
 
   @override
   void dispose() {
+    _speech.stop();
+    _tts.stop();
     _descripcionCtrl.dispose();
     super.dispose();
   }
 
-  void activarDictadoVoz() {
+  Future<void> activarDictadoVoz() async {
     if (widget.onDictadoVoz != null) {
       widget.onDictadoVoz!();
       return;
     }
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        key: Key('snackbar_dictado_voz'),
-        content: Row(
-          children: [
-            Icon(Icons.mic, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text('Dictado por voz: listo para conectar con el módulo de voz.'),
-            ),
-          ],
-        ),
-        duration: Duration(seconds: 2),
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    if (!_speechAvailable) {
+      await _inicializarVoz();
+    }
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      setState(
+        () => _speechError =
+            'El dictado por voz no está disponible en este dispositivo.',
+      );
+      return;
+    }
+    if (_isListening) {
+      await _speech.stop();
+      return;
+    }
+    setState(() => _speechError = null);
+    await _speech.listen(
+      onResult: _onSpeechResult,
+      listenOptions: SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: ListenMode.dictation,
+        localeId: isEnglish ? 'en_US' : 'es_ES',
       ),
     );
+    if (mounted) setState(() => _isListening = true);
+  }
+
+  Future<void> _onSpeechResult(SpeechRecognitionResult result) async {
+    if (result.recognizedWords.isNotEmpty) {
+      _descripcionCtrl
+        ..text = result.recognizedWords
+        ..selection = TextSelection.collapsed(
+          offset: result.recognizedWords.length,
+        );
+      if (mounted) setState(() {});
+    }
+    if (result.finalResult) {
+      if (mounted) setState(() => _isListening = false);
+      if (!mounted) return;
+      final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+      await _tts.setLanguage(isEnglish ? 'en-US' : 'es-ES');
+      await _tts.speak(
+        isEnglish ? 'Description dictated' : 'Descripción dictada',
+      );
+    }
   }
 
   Future<bool> guardarIncidencia() async {
@@ -119,7 +188,9 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               Icon(Icons.error_outline, color: Colors.white),
               SizedBox(width: 8),
               Expanded(
-                child: Text('Por favor, completa correctamente todos los campos obligatorios.'),
+                child: Text(
+                  'Por favor, completa correctamente todos los campos obligatorios.',
+                ),
               ),
             ],
           ),
@@ -154,7 +225,9 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                   const Icon(Icons.check_circle, color: Colors.white),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text('Incidencia #${creada.id ?? ""} guardada con éxito en la base de datos.'),
+                    child: Text(
+                      'Incidencia #${creada.id ?? ""} guardada con éxito en la base de datos.',
+                    ),
                   ),
                 ],
               ),
@@ -166,7 +239,10 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(_incidenciasCtrl.errorMessage ?? 'Error al guardar la incidencia.'),
+              content: Text(
+                _incidenciasCtrl.errorMessage ??
+                    'Error al guardar la incidencia.',
+              ),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -199,7 +275,9 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ExportVisualIncidenciaWidget()),
+                MaterialPageRoute(
+                  builder: (_) => const ExportVisualIncidenciaWidget(),
+                ),
               );
             },
           ),
@@ -215,18 +293,26 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Formulario de Incidencia', style: theme.textTheme.titleMedium),
+              Text(
+                'Formulario de Incidencia',
+                style: theme.textTheme.titleMedium,
+              ),
               if (widget.equipoId != null) ...[
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     'Equipo asignado previamente: #${widget.equipoId}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSecondaryContainer),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSecondaryContainer,
+                    ),
                   ),
                 ),
               ],
@@ -262,24 +348,69 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.edit_note_outlined, size: 20, color: theme.colorScheme.primary),
+                              Icon(
+                                Icons.edit_note_outlined,
+                                size: 20,
+                                color: theme.colorScheme.primary,
+                              ),
                               const SizedBox(width: 8),
-                              Text('Descripción de la Avería', style: theme.textTheme.titleSmall),
+                              Text(
+                                'Descripción de la Avería',
+                                style: theme.textTheme.titleSmall,
+                              ),
                             ],
                           ),
                           // Botón de dictado por voz (se conecta luego con la voz)
                           FilledButton.tonalIcon(
                             key: const Key('btn_dictado_voz'),
                             onPressed: activarDictadoVoz,
-                            icon: const Icon(Icons.mic, size: 18),
-                            label: const Text('Dictar por voz'),
+                            icon: Icon(
+                              _isListening ? Icons.stop : Icons.mic,
+                              size: 18,
+                            ),
+                            label: Text(
+                              _isListening ? 'Escuchando...' : 'Dictar por voz',
+                            ),
                             style: FilledButton.styleFrom(
                               visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                             ),
                           ),
                         ],
                       ),
+                      if (_isListening || _speechError != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              _isListening
+                                  ? Icons.graphic_eq
+                                  : Icons.info_outline,
+                              size: 18,
+                              color: _isListening
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.error,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _isListening
+                                    ? 'Escuchando... habla ahora. Pulsa de nuevo para detener.'
+                                    : _speechError!,
+                                key: const Key('estado_dictado_voz'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: _isListening
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       TextFormField(
                         key: const Key('input_descripcion'),
@@ -291,10 +422,12 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                           border: const OutlineInputBorder(),
                           prefixIcon: const Icon(Icons.description),
                           suffixIcon: Tooltip(
-                            message: 'Dictar descripción por voz',
+                            message: _isListening
+                                ? 'Detener dictado'
+                                : 'Dictar descripción por voz',
                             child: IconButton(
                               key: const Key('btn_dictado_voz_suffix'),
-                              icon: const Icon(Icons.mic),
+                              icon: Icon(_isListening ? Icons.stop : Icons.mic),
                               onPressed: activarDictadoVoz,
                             ),
                           ),
@@ -319,20 +452,25 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               // PASO 4: Selector de Prioridad con Chips semánticos
               PrioridadChipsSelector(
                 prioridadSeleccionada: _selectedPrioridad,
-                onPrioridadChanged: (p) => setState(() => _selectedPrioridad = p),
+                onPrioridadChanged: (p) =>
+                    setState(() => _selectedPrioridad = p),
               ),
               const SizedBox(height: 16),
 
               // Previsualización reactiva del Ticket en tiempo real
               LiveTicketPreviewCard(
-                aulaNombre: _aulasCtrl.aulas
-                    .where((a) => a.id == _selectedAulaId)
-                    .map((a) => a.nombre)
-                    .firstOrNull ?? 'Aula no seleccionada',
-                equipoCodigo: _equiposCtrl.equipos
-                    .where((e) => e.id == _selectedEquipoId)
-                    .map((e) => '${e.codigo} (${e.tipo})')
-                    .firstOrNull ?? 'Equipo no seleccionado',
+                aulaNombre:
+                    _aulasCtrl.aulas
+                        .where((a) => a.id == _selectedAulaId)
+                        .map((a) => a.nombre)
+                        .firstOrNull ??
+                    'Aula no seleccionada',
+                equipoCodigo:
+                    _equiposCtrl.equipos
+                        .where((e) => e.id == _selectedEquipoId)
+                        .map((e) => '${e.codigo} (${e.tipo})')
+                        .firstOrNull ??
+                    'Equipo no seleccionado',
                 descripcion: _descripcionCtrl.text.isEmpty
                     ? 'Sin descripción introducida'
                     : _descripcionCtrl.text,
@@ -405,8 +543,12 @@ class UbicacionSelectorWidget extends StatelessWidget {
         ? equiposCtrl.equipos.where((e) => e.aulaId == selectedAulaId).toList()
         : <Equipo>[];
 
-    final currentAulaValue = aulas.any((a) => a.id == selectedAulaId) ? selectedAulaId : null;
-    final currentEquipoValue = equiposAula.any((e) => e.id == selectedEquipoId) ? selectedEquipoId : null;
+    final currentAulaValue = aulas.any((a) => a.id == selectedAulaId)
+        ? selectedAulaId
+        : null;
+    final currentEquipoValue = equiposAula.any((e) => e.id == selectedEquipoId)
+        ? selectedEquipoId
+        : null;
 
     return Card(
       child: Padding(
@@ -416,9 +558,16 @@ class UbicacionSelectorWidget extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.meeting_room_outlined, size: 20, color: theme.colorScheme.primary),
+                Icon(
+                  Icons.meeting_room_outlined,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: 8),
-                Text('Ubicación y Dispositivo', style: theme.textTheme.titleSmall),
+                Text(
+                  'Ubicación y Dispositivo',
+                  style: theme.textTheme.titleSmall,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -455,7 +604,9 @@ class UbicacionSelectorWidget extends StatelessWidget {
                   labelText: 'Equipo Afectado *',
                   hintText: selectedAulaId == null
                       ? 'Selecciona un aula primero'
-                      : (equiposAula.isEmpty ? 'No hay equipos en esta aula' : 'Selecciona el equipo'),
+                      : (equiposAula.isEmpty
+                            ? 'No hay equipos en esta aula'
+                            : 'Selecciona el equipo'),
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.devices),
                 ),
@@ -497,7 +648,8 @@ class PrioridadChipsSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
+    final incidenciasColors =
+        theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     return Card(
       key: const Key('card_prioridad_selector'),
@@ -508,9 +660,16 @@ class PrioridadChipsSelector extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.flag_outlined, size: 20, color: theme.colorScheme.primary),
+                Icon(
+                  Icons.flag_outlined,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: 8),
-                Text('Nivel de Urgencia (Prioridad)', style: theme.textTheme.titleSmall),
+                Text(
+                  'Nivel de Urgencia (Prioridad)',
+                  style: theme.textTheme.titleSmall,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -526,8 +685,12 @@ class PrioridadChipsSelector extends StatelessWidget {
                   label: Text(
                     p.value,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : theme.colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected
+                          ? Colors.white
+                          : theme.colorScheme.onSurface,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                   selected: isSelected,
@@ -569,7 +732,8 @@ class LiveTicketPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
+    final incidenciasColors =
+        theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     return Container(
       width: double.infinity,
@@ -584,7 +748,11 @@ class LiveTicketPreviewCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.preview_outlined, color: colorScheme.primary, size: 20),
+              Icon(
+                Icons.preview_outlined,
+                color: colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Previsualización del Ticket IES',
@@ -599,7 +767,9 @@ class LiveTicketPreviewCard extends StatelessWidget {
                   prioridad.value,
                   style: const TextStyle(color: Colors.white, fontSize: 11),
                 ),
-                backgroundColor: incidenciasColors.colorParaPrioridad(prioridad),
+                backgroundColor: incidenciasColors.colorParaPrioridad(
+                  prioridad,
+                ),
                 visualDensity: VisualDensity.compact,
                 side: BorderSide.none,
               ),
@@ -608,16 +778,22 @@ class LiveTicketPreviewCard extends StatelessWidget {
           const Divider(height: 16),
           Text(
             'Ubicación: $aulaNombre',
-            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
           ),
           Text(
             'Dispositivo: $equipoCodigo',
-            style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.secondary),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.secondary,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             '"$descripcion"',
-            style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),

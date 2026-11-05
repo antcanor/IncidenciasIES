@@ -113,7 +113,7 @@ void main() {
       expect(find.byKey(const Key('btn_cancelar_incidencia')), findsOneWidget);
     });
 
-    testWidgets('2. Botón de dictado por voz muestra retroalimentación (se conecta luego con la voz)', (tester) async {
+    testWidgets('2. Botón de dictado por voz ejecuta el callback alternativo', (tester) async {
       bool dictadoCallbackEjecutado = false;
 
       await tester.pumpWidget(buildTestApp(
@@ -129,18 +129,8 @@ void main() {
 
       expect(dictadoCallbackEjecutado, isTrue);
 
-      // También probar el comportamiento por defecto con SnackBar (sin callback externo)
-      await tester.pumpWidget(buildTestApp());
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('btn_dictado_voz')));
-      await tester.pump();
-
-      expect(find.byKey(const Key('snackbar_dictado_voz')), findsOneWidget);
-      expect(
-        find.textContaining('Dictado por voz: listo para conectar con el módulo de voz.'),
-        findsOneWidget,
-      );
+      // La entrada manual sigue disponible como alternativa.
+      expect(find.byKey(const Key('input_descripcion')), findsOneWidget);
     });
 
     testWidgets('3. Validación: formulario inválido muestra errores y NO guarda la incidencia', (tester) async {

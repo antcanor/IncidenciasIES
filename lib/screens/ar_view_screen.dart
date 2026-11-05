@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:incidencias_ui/incidencias_ui.dart';
 
 import '../models/incidencia_detalle.dart';
 import '../repositories/incidencia_repository.dart';
@@ -96,6 +97,8 @@ class _ArViewScreenState extends State<ArViewScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.videocam, size: 96, color: Colors.white),
+                const SizedBox(height: 8),
+                const MaquetaArBadge(),
                 const SizedBox(height: 8),
                 Text(
                   'VISTA DE CÁMARA · MAQUETA',

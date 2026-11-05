@@ -45,6 +45,8 @@ dependencies:
   speech_to_text: ^7.5.0
   flutter_tts: ^4.2.5
   sensors_plus: ^7.1.1
+  incidencias_ui:
+    path: packages/incidencias_ui
 
 dev_dependencies:
   flutter_test:

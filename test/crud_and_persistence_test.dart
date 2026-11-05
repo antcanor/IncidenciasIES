@@ -39,10 +39,9 @@ void main() {
   group('1. Operaciones CRUD en las 4 tablas', () {
     test('CRUD en tabla Aula (Crear, Leer, Actualizar, Borrar)', () async {
       // 1. CREATE
-      final creada = await aulaRepo.create(const Aula(
-        nombre: 'Aula 301 - Test',
-        planta: 3,
-      ));
+      final creada = await aulaRepo.create(
+        const Aula(nombre: 'Aula 301 - Test', planta: 3),
+      );
       expect(creada.id, isNotNull);
       final int aulaId = creada.id!;
 
@@ -53,7 +52,10 @@ void main() {
       expect(recuperada.planta, equals(3));
 
       // 3. UPDATE
-      final aulaModificada = recuperada.copyWith(nombre: 'Aula 301 - Modificada', planta: 4);
+      final aulaModificada = recuperada.copyWith(
+        nombre: 'Aula 301 - Modificada',
+        planta: 4,
+      );
       final filasActualizadas = await aulaRepo.update(aulaModificada);
       expect(filasActualizadas, equals(1));
 
@@ -70,14 +72,18 @@ void main() {
     });
 
     test('CRUD en tabla Equipo', () async {
-      final aula = await aulaRepo.create(const Aula(nombre: 'Aula Temp Equipo', planta: 1));
+      final aula = await aulaRepo.create(
+        const Aula(nombre: 'Aula Temp Equipo', planta: 1),
+      );
 
       // CREATE
-      final equipo = await equipoRepo.create(Equipo(
-        aulaId: aula.id!,
-        tipo: 'Impresora Láser',
-        codigo: 'IMP-TEST-99',
-      ));
+      final equipo = await equipoRepo.create(
+        Equipo(
+          aulaId: aula.id!,
+          tipo: 'Impresora Láser',
+          codigo: 'IMP-TEST-99',
+        ),
+      );
       expect(equipo.id, isNotNull);
       final int eqId = equipo.id!;
 
@@ -90,7 +96,9 @@ void main() {
       expect(equiposAula.any((e) => e.id == eqId), isTrue);
 
       // UPDATE
-      final eqModificado = eqRecuperado.copyWith(tipo: 'Impresora Color Multifunción');
+      final eqModificado = eqRecuperado.copyWith(
+        tipo: 'Impresora Color Multifunción',
+      );
       await equipoRepo.update(eqModificado);
       final eqVerificado = await equipoRepo.getById(eqId);
       expect(eqVerificado!.tipo, equals('Impresora Color Multifunción'));
@@ -104,29 +112,34 @@ void main() {
     });
 
     test('CRUD en tabla Incidencia', () async {
-      final aula = await aulaRepo.create(const Aula(nombre: 'Aula Temp Incidencia', planta: 2));
-      final equipo = await equipoRepo.create(Equipo(
-        aulaId: aula.id!,
-        tipo: 'PC Sobremesa',
-        codigo: 'PC-INC-TEST',
-      ));
+      final aula = await aulaRepo.create(
+        const Aula(nombre: 'Aula Temp Incidencia', planta: 2),
+      );
+      final equipo = await equipoRepo.create(
+        Equipo(aulaId: aula.id!, tipo: 'PC Sobremesa', codigo: 'PC-INC-TEST'),
+      );
 
       // CREATE
       final now = DateTime.now();
-      final inc = await incidenciaRepo.create(Incidencia(
-        equipoId: equipo.id!,
-        descripcion: 'Disco duro con sectores defectuosos',
-        prioridad: Prioridad.media,
-        estado: Estado.abierta,
-        fecha: now,
-      ));
+      final inc = await incidenciaRepo.create(
+        Incidencia(
+          equipoId: equipo.id!,
+          descripcion: 'Disco duro con sectores defectuosos',
+          prioridad: Prioridad.media,
+          estado: Estado.abierta,
+          fecha: now,
+        ),
+      );
       expect(inc.id, isNotNull);
       final int incId = inc.id!;
 
       // READ
       final incRecuperada = await incidenciaRepo.getById(incId);
       expect(incRecuperada, isNotNull);
-      expect(incRecuperada!.descripcion, equals('Disco duro con sectores defectuosos'));
+      expect(
+        incRecuperada!.descripcion,
+        equals('Disco duro con sectores defectuosos'),
+      );
       expect(incRecuperada.prioridad, equals(Prioridad.media));
       expect(incRecuperada.estado, equals(Estado.abierta));
 
@@ -150,26 +163,30 @@ void main() {
     });
 
     test('CRUD en tabla Comentario', () async {
-      final aula = await aulaRepo.create(const Aula(nombre: 'Aula Temp Comentario', planta: 0));
-      final equipo = await equipoRepo.create(Equipo(
-        aulaId: aula.id!,
-        tipo: 'Router',
-        codigo: 'RT-TEST-01',
-      ));
-      final inc = await incidenciaRepo.create(Incidencia(
-        equipoId: equipo.id!,
-        descripcion: 'Sin conexión a red',
-        prioridad: Prioridad.urgente,
-        estado: Estado.abierta,
-        fecha: DateTime.now(),
-      ));
+      final aula = await aulaRepo.create(
+        const Aula(nombre: 'Aula Temp Comentario', planta: 0),
+      );
+      final equipo = await equipoRepo.create(
+        Equipo(aulaId: aula.id!, tipo: 'Router', codigo: 'RT-TEST-01'),
+      );
+      final inc = await incidenciaRepo.create(
+        Incidencia(
+          equipoId: equipo.id!,
+          descripcion: 'Sin conexión a red',
+          prioridad: Prioridad.urgente,
+          estado: Estado.abierta,
+          fecha: DateTime.now(),
+        ),
+      );
 
       // CREATE
-      final com = await comentarioRepo.create(Comentario(
-        incidenciaId: inc.id!,
-        fecha: DateTime.now(),
-        texto: 'Se procedió al reinicio del router; persiste error de DHCP.',
-      ));
+      final com = await comentarioRepo.create(
+        Comentario(
+          incidenciaId: inc.id!,
+          fecha: DateTime.now(),
+          texto: 'Se procedió al reinicio del router; persiste error de DHCP.',
+        ),
+      );
       expect(com.id, isNotNull);
       final int comId = com.id!;
 
@@ -182,10 +199,15 @@ void main() {
       expect(comentariosInc.length, equals(1));
 
       // UPDATE
-      final comModificado = comRecuperado.copyWith(texto: 'Se ha reemplazado cable RJ45 dañado.');
+      final comModificado = comRecuperado.copyWith(
+        texto: 'Se ha reemplazado cable RJ45 dañado.',
+      );
       await comentarioRepo.update(comModificado);
       final comVerificado = await comentarioRepo.getById(comId);
-      expect(comVerificado!.texto, equals('Se ha reemplazado cable RJ45 dañado.'));
+      expect(
+        comVerificado!.texto,
+        equals('Se ha reemplazado cable RJ45 dañado.'),
+      );
 
       // DELETE
       final filasBorradas = await comentarioRepo.delete(comId);
@@ -199,9 +221,36 @@ void main() {
   });
 
   group('2. Carga inicial de datos de ejemplo (Seeder >= 10 filas)', () {
+    test('Las claves foráneas protegen aulas y eliminan incidencias al borrar equipos', () async {
+      final aula = await aulaRepo.create(
+        const Aula(nombre: 'Aula FK Test', planta: 9),
+      );
+      final equipo = await equipoRepo.create(
+        Equipo(aulaId: aula.id!, tipo: 'Equipo FK', codigo: 'FK-TEST-01'),
+      );
+      final incidencia = await incidenciaRepo.create(
+        Incidencia(
+          equipoId: equipo.id!,
+          descripcion: 'Incidencia FK',
+          prioridad: Prioridad.baja,
+          estado: Estado.abierta,
+          fecha: DateTime.now(),
+        ),
+      );
+
+      expect(() => aulaRepo.delete(aula.id!), throwsA(isA<Exception>()));
+      expect(await equipoRepo.delete(equipo.id!), equals(1));
+      expect(await incidenciaRepo.getById(incidencia.id!), isNull);
+      expect(await aulaRepo.delete(aula.id!), equals(1));
+    });
+
     test('Seeder inserta 16 filas distribuidas en las 4 tablas', () async {
       final fueInsertado = await seeder.seedIfEmpty();
-      expect(fueInsertado, isTrue, reason: 'Al estar vacía, se deben insertar los datos de ejemplo');
+      expect(
+        fueInsertado,
+        isTrue,
+        reason: 'Al estar vacía, se deben insertar los datos de ejemplo',
+      );
 
       final totalAulas = await aulaRepo.count();
       final totalEquipos = await equipoRepo.count();
@@ -213,14 +262,19 @@ void main() {
       expect(totalIncidencias, equals(4));
       expect(totalComentarios, equals(4));
 
-      final totalFilas = totalAulas + totalEquipos + totalIncidencias + totalComentarios;
+      final totalFilas =
+          totalAulas + totalEquipos + totalIncidencias + totalComentarios;
       expect(totalFilas, greaterThanOrEqualTo(10));
       expect(totalFilas, equals(16));
     });
 
     test('Seeder es idempotente (no duplica si ya existen datos)', () async {
       final segundoIntento = await seeder.seedIfEmpty();
-      expect(segundoIntento, isFalse, reason: 'No debe reinsertar si ya existen aulas');
+      expect(
+        segundoIntento,
+        isFalse,
+        reason: 'No debe reinsertar si ya existen aulas',
+      );
 
       final totalAulas = await aulaRepo.count();
       expect(totalAulas, equals(3));
@@ -228,36 +282,42 @@ void main() {
   });
 
   group('3. Persistencia de datos al reiniciar la base de datos', () {
-    test('Los datos persisten tras cerrar y volver a abrir la conexión SQLite', () async {
-      // 1. Verificar datos antes de cerrar
-      final aulasPre = await aulaRepo.getAll();
-      final equiposPre = await equipoRepo.getAll();
-      final incidenciasPre = await incidenciaRepo.getAll();
-      final comentariosPre = await comentarioRepo.getAll();
+    test(
+      'Los datos persisten tras cerrar y volver a abrir la conexión SQLite',
+      () async {
+        // 1. Verificar datos antes de cerrar
+        final aulasPre = await aulaRepo.getAll();
+        final equiposPre = await equipoRepo.getAll();
+        final incidenciasPre = await incidenciaRepo.getAll();
+        final comentariosPre = await comentarioRepo.getAll();
 
-      expect(aulasPre.length, equals(3));
-      expect(equiposPre.length, equals(5));
-      expect(incidenciasPre.length, equals(4));
-      expect(comentariosPre.length, equals(4));
+        expect(aulasPre.length, equals(3));
+        expect(equiposPre.length, equals(5));
+        expect(incidenciasPre.length, equals(4));
+        expect(comentariosPre.length, equals(4));
 
-      // 2. SIMULAR REINICIO DE LA APP / CONEXIÓN
-      await DatabaseHelper.instance.close();
+        // 2. SIMULAR REINICIO DE LA APP / CONEXIÓN
+        await DatabaseHelper.instance.close();
 
-      // 3. Volver a abrir la conexión y verificar que todos los datos están intactos
-      final aulasPost = await aulaRepo.getAll();
-      final equiposPost = await equipoRepo.getAll();
-      final incidenciasPost = await incidenciaRepo.getAll();
-      final comentariosPost = await comentarioRepo.getAll();
+        // 3. Volver a abrir la conexión y verificar que todos los datos están intactos
+        final aulasPost = await aulaRepo.getAll();
+        final equiposPost = await equipoRepo.getAll();
+        final incidenciasPost = await incidenciaRepo.getAll();
+        final comentariosPost = await comentarioRepo.getAll();
 
-      expect(aulasPost.length, equals(3));
-      expect(equiposPost.length, equals(5));
-      expect(incidenciasPost.length, equals(4));
-      expect(comentariosPost.length, equals(4));
+        expect(aulasPost.length, equals(3));
+        expect(equiposPost.length, equals(5));
+        expect(incidenciasPost.length, equals(4));
+        expect(comentariosPost.length, equals(4));
 
-      // Validar un registro específico para asegurar integridad de contenido
-      expect(aulasPost.first.nombre, equals('Taller de Hardware y Redes'));
-      expect(equiposPost.any((e) => e.codigo == 'PC-101-01'), isTrue);
-      expect(incidenciasPost.any((i) => i.prioridad == Prioridad.urgente), isTrue);
-    });
+        // Validar un registro específico para asegurar integridad de contenido
+        expect(aulasPost.first.nombre, equals('Taller de Hardware y Redes'));
+        expect(equiposPost.any((e) => e.codigo == 'PC-101-01'), isTrue);
+        expect(
+          incidenciasPost.any((i) => i.prioridad == Prioridad.urgente),
+          isTrue,
+        );
+      },
+    );
   });
 }

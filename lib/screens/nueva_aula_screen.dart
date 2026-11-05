@@ -1,44 +1,86 @@
 import 'package:flutter/material.dart';
+import '../controllers/controllers.dart';
+import '../models/aula.dart';
 
-class NuevaAulaScreen extends StatelessWidget {
-  const NuevaAulaScreen({super.key});
+class NuevaAulaScreen extends StatefulWidget {
+  final Aula? aula;
+  final AulasController? controller;
+
+  const NuevaAulaScreen({super.key, this.aula, this.controller});
+
+  @override
+  State<NuevaAulaScreen> createState() => _NuevaAulaScreenState();
+}
+
+class _NuevaAulaScreenState extends State<NuevaAulaScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nombre;
+  late final TextEditingController _planta;
+  late final AulasController _controller;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? AulasController();
+    _nombre = TextEditingController(text: widget.aula?.nombre);
+    _planta = TextEditingController(text: widget.aula?.planta.toString());
+  }
+
+  @override
+  void dispose() {
+    _nombre.dispose();
+    _planta.dispose();
+    if (widget.controller == null) _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    final aula = Aula(
+      id: widget.aula?.id,
+      nombre: _nombre.text.trim(),
+      planta: int.parse(_planta.text.trim()),
+    );
+    final success = widget.aula == null
+        ? await _controller.createAula(aula) != null
+        : await _controller.updateAula(aula);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (success) {
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_controller.errorMessage ?? 'No se pudo guardar el aula.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    final editing = widget.aula != null;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Crear Nueva Aula'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: Text(editing ? 'Editar Aula' : 'Crear Nueva Aula')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
           children: [
-            Text('Datos del Aula', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(
-                labelText: 'Nombre del Aula',
-                hintText: 'Ej: Aula 105 - Telemática',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.meeting_room),
-              ),
+            TextFormField(
+              controller: _nombre,
+              decoration: const InputDecoration(labelText: 'Nombre del Aula', border: OutlineInputBorder()),
+              validator: (value) => value == null || value.trim().isEmpty ? 'Introduce un nombre.' : null,
             ),
             const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(
-                labelText: 'Número de Planta',
-                hintText: 'Ej: 0, 1, 2',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.layers),
-              ),
+            TextFormField(
+              controller: _planta,
+              decoration: const InputDecoration(labelText: 'Número de Planta', border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
+              validator: (value) {
+                final planta = int.tryParse(value?.trim() ?? '');
+                return planta == null ? 'Introduce una planta válida.' : null;
+              },
             ),
             const SizedBox(height: 24),
             Row(
@@ -52,8 +94,8 @@ class NuevaAulaScreen extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Guardar Aula'),
+                    onPressed: _saving ? null : _save,
+                    child: Text(_saving ? 'Guardando...' : 'Guardar Aula'),
                   ),
                 ),
               ],

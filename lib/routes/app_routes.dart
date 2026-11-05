@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controllers/controllers.dart';
+import '../models/models.dart';
 import '../screens/screens.dart';
 
 class AppRoutes {
@@ -89,40 +90,67 @@ class AppRoutes {
 
       case aulas:
         return MaterialPageRoute(
-          builder: (_) => const AulasListScreen(),
+          builder: (_) => AulasListScreen(controller: defaultAulasController),
           settings: settings,
         );
 
       case aulaDetalle:
-        final int id = (settings.arguments as int?) ?? 1;
+        final args = settings.arguments;
+        final aula = args is Map<String, dynamic> ? args['aula'] as Aula? : null;
+        final int id = aula?.id ?? (args is Map<String, dynamic> ? args['aulaId'] as int? : args as int?) ?? 1;
+        final aulasCtrl = args is Map<String, dynamic> ? args['aulasCtrl'] as AulasController? : defaultAulasController;
+        final equiposCtrl = args is Map<String, dynamic> ? args['equiposCtrl'] as EquiposController? : defaultEquiposController;
         return MaterialPageRoute(
-          builder: (_) => AulaDetalleScreen(aulaId: id),
+          builder: (_) => AulaDetalleScreen(
+            aulaId: id,
+            aula: aula,
+            aulasController: aulasCtrl,
+            equiposController: equiposCtrl,
+          ),
           settings: settings,
         );
 
       case nuevaAula:
+        final args = settings.arguments;
         return MaterialPageRoute(
-          builder: (_) => const NuevaAulaScreen(),
+          builder: (_) => NuevaAulaScreen(
+            aula: args is Map<String, dynamic> ? args['aula'] as Aula? : null,
+            controller: args is Map<String, dynamic> ? args['aulasCtrl'] as AulasController? : defaultAulasController,
+          ),
           settings: settings,
         );
 
       case equipos:
+        final args = settings.arguments;
         return MaterialPageRoute(
-          builder: (_) => const EquiposListScreen(),
+          builder: (_) => EquiposListScreen(
+            controller: args is Map<String, dynamic> ? args['equiposCtrl'] as EquiposController? : defaultEquiposController,
+            aulaId: args is Map<String, dynamic> ? args['aulaId'] as int? : null,
+          ),
           settings: settings,
         );
 
       case equipoDetalle:
-        final int id = (settings.arguments as int?) ?? 1;
+        final args = settings.arguments;
+        final equipo = args is Map<String, dynamic> ? args['equipo'] as Equipo? : null;
+        final int id = equipo?.id ?? (args is Map<String, dynamic> ? args['equipoId'] as int? : args as int?) ?? 1;
         return MaterialPageRoute(
-          builder: (_) => EquipoDetalleScreen(equipoId: id),
+          builder: (_) => EquipoDetalleScreen(
+            equipoId: id,
+            equipo: equipo,
+            equiposController: args is Map<String, dynamic> ? args['equiposCtrl'] as EquiposController? : defaultEquiposController,
+          ),
           settings: settings,
         );
 
       case nuevoEquipo:
-        final int? aulaId = settings.arguments as int?;
+        final args = settings.arguments;
         return MaterialPageRoute(
-          builder: (_) => NuevoEquipoScreen(aulaId: aulaId),
+          builder: (_) => NuevoEquipoScreen(
+            aulaId: args is Map<String, dynamic> ? args['aulaId'] as int? : args as int?,
+            equipo: args is Map<String, dynamic> ? args['equipo'] as Equipo? : null,
+            controller: args is Map<String, dynamic> ? args['equiposCtrl'] as EquiposController? : defaultEquiposController,
+          ),
           settings: settings,
         );
 

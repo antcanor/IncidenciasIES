@@ -56,6 +56,25 @@ class IncidenciaRepository {
     return maps.map((map) => Incidencia.fromMap(map)).toList();
   }
 
+  /// Cuenta incidencias activas (abiertas o en proceso) agrupadas por equipo.
+  Future<Map<int, int>> countActiveByEquipoIds(Iterable<int> equipoIds) async {
+    final ids = equipoIds.toList();
+    if (ids.isEmpty) return {};
+    final db = await _db;
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    final rows = await db.rawQuery('''
+      SELECT equipo_id, COUNT(*) AS total
+      FROM incidencia
+      WHERE equipo_id IN ($placeholders)
+        AND estado IN (?, ?)
+      GROUP BY equipo_id
+    ''', [...ids, Estado.abierta.value, Estado.enProceso.value]);
+    return {
+      for (final row in rows)
+        row['equipo_id'] as int: (row['total'] as num).toInt(),
+    };
+  }
+
   /// Filtra incidencias por su estado.
   Future<List<Incidencia>> getByEstado(Estado estado) async {
     final db = await _db;

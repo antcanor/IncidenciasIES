@@ -5,17 +5,19 @@ import '../theme/theme.dart';
 import 'prototipo/export_visual_incidencia.dart';
 
 /// =============================================================================
-/// PANTALLA REFACTORIZADA MANUALMENTE (RA1.b, c, e, f)
-/// Prototipo adaptado desde editor visual aplicando:
-/// - Wrap with Form, Wrap with SingleChildScrollView, Wrap with Padding, Wrap with Card.
-/// - Extract Widget: UbicacionSelectorWidget, PrioridadChipsSelector, LiveTicketPreviewCard.
-/// - Conexión MVC y persistencia real en SQLite.
+/// PANTALLA 4: NUEVA INCIDENCIA (FORMULARIO CON VALIDACIÓN Y DICTADO POR VOZ)
+/// - Flujo guiado: Aula → Equipo → Descripción → Prioridad
+/// - Validación de formulario con mensajes de error descriptivos.
+/// - Botón de dictado por voz (preparado para conectar con módulo STT).
+/// - Previsualización de ticket reactiva en tiempo real.
+/// - Persistencia real en SQLite y actualización automática de la lista.
 /// =============================================================================
 class NuevaIncidenciaScreen extends StatefulWidget {
   final int? equipoId;
   final IncidenciasController? incidenciasCtrl;
   final AulasController? aulasCtrl;
   final EquiposController? equiposCtrl;
+  final VoidCallback? onDictadoVoz;
 
   const NuevaIncidenciaScreen({
     super.key,
@@ -23,13 +25,14 @@ class NuevaIncidenciaScreen extends StatefulWidget {
     this.incidenciasCtrl,
     this.aulasCtrl,
     this.equiposCtrl,
+    this.onDictadoVoz,
   });
 
   @override
-  State<NuevaIncidenciaScreen> createState() => _NuevaIncidenciaScreenState();
+  State<NuevaIncidenciaScreen> createState() => NuevaIncidenciaScreenState();
 }
 
-class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
+class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _descripcionCtrl = TextEditingController();
 
@@ -68,14 +71,6 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
             _selectedAulaId = match.first.aulaId;
           });
         }
-      } else if (_aulasCtrl.aulas.isNotEmpty && _selectedAulaId == null) {
-        setState(() {
-          _selectedAulaId = _aulasCtrl.aulas.first.id;
-          final eqList = _equiposCtrl.equipos.where((e) => e.aulaId == _selectedAulaId).toList();
-          if (eqList.isNotEmpty) {
-            _selectedEquipoId = eqList.first.id;
-          }
-        });
       }
     } catch (_) {
       // Ignorar en tests de navegación sin BD
@@ -88,13 +83,51 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
     super.dispose();
   }
 
-  Future<void> _guardarIncidencia() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedEquipoId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecciona un equipo.')),
-      );
+  void activarDictadoVoz() {
+    if (widget.onDictadoVoz != null) {
+      widget.onDictadoVoz!();
       return;
+    }
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        key: Key('snackbar_dictado_voz'),
+        content: Row(
+          children: [
+            Icon(Icons.mic, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text('Dictado por voz: listo para conectar con el módulo de voz.'),
+            ),
+          ],
+        ),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<bool> guardarIncidencia() async {
+    final bool isFormValid = _formKey.currentState?.validate() ?? false;
+    if (!isFormValid || _selectedEquipoId == null || _selectedAulaId == null) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          key: Key('snackbar_error_validacion'),
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Por favor, completa correctamente todos los campos obligatorios.'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
     }
 
     setState(() => _isSaving = true);
@@ -108,17 +141,39 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
         fecha: DateTime.now(),
       );
 
-      await _incidenciasCtrl.createIncidencia(nueva);
+      final creada = await _incidenciasCtrl.createIncidencia(nueva);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Incidencia guardada con éxito en la base de datos.'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        Navigator.pop(context, true);
+        if (creada != null) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              key: const Key('snackbar_incidencia_guardada'),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Incidencia #${creada.id ?? ""} guardada con éxito en la base de datos.'),
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          Navigator.pop(context, true);
+          return true;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_incidenciasCtrl.errorMessage ?? 'Error al guardar la incidencia.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          return false;
+        }
       }
+      return false;
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -177,7 +232,7 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               ],
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 1: Selector dinámico de Aula y Equipo
+              // PASO 1 & 2: Selector dinámico de Aula y Equipo
               UbicacionSelectorWidget(
                 aulasCtrl: _aulasCtrl,
                 equiposCtrl: _equiposCtrl,
@@ -186,8 +241,7 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                 onAulaChanged: (newAulaId) {
                   setState(() {
                     _selectedAulaId = newAulaId;
-                    final eqList = _equiposCtrl.equipos.where((e) => e.aulaId == newAulaId).toList();
-                    _selectedEquipoId = eqList.isNotEmpty ? eqList.first.id : null;
+                    _selectedEquipoId = null;
                   });
                 },
                 onEquipoChanged: (newEqId) {
@@ -196,23 +250,54 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               ),
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 2: Campo de descripción con validación
+              // PASO 3: Campo de descripción con validación y botón de dictado por voz
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Descripción de la Avería', style: theme.textTheme.titleSmall),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.edit_note_outlined, size: 20, color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text('Descripción de la Avería', style: theme.textTheme.titleSmall),
+                            ],
+                          ),
+                          // Botón de dictado por voz (se conecta luego con la voz)
+                          FilledButton.tonalIcon(
+                            key: const Key('btn_dictado_voz'),
+                            onPressed: activarDictadoVoz,
+                            icon: const Icon(Icons.mic, size: 18),
+                            label: const Text('Dictar por voz'),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: const Key('input_descripcion'),
                         controller: _descripcionCtrl,
                         maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Descripción de la avería',
-                          hintText: 'Detalla el problema (p. ej. pantalla azul, tecla rota...)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.description),
+                        decoration: InputDecoration(
+                          labelText: 'Descripción de la avería *',
+                          hintText: 'Detalla el problema (p. ej. pantalla azul, no enciende, tecla rota...)',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.description),
+                          suffixIcon: Tooltip(
+                            message: 'Dictar descripción por voz',
+                            child: IconButton(
+                              key: const Key('btn_dictado_voz_suffix'),
+                              icon: const Icon(Icons.mic),
+                              onPressed: activarDictadoVoz,
+                            ),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -231,14 +316,14 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               ),
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 3: Selector de Prioridad con Chips semánticos
+              // PASO 4: Selector de Prioridad con Chips semánticos
               PrioridadChipsSelector(
                 prioridadSeleccionada: _selectedPrioridad,
                 onPrioridadChanged: (p) => setState(() => _selectedPrioridad = p),
               ),
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 4: Previsualización reactiva del Ticket en tiempo real
+              // Previsualización reactiva del Ticket en tiempo real
               LiveTicketPreviewCard(
                 aulaNombre: _aulasCtrl.aulas
                     .where((a) => a.id == _selectedAulaId)
@@ -256,11 +341,12 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               ),
               const SizedBox(height: 24),
 
-              // EXTRACT WIDGET 5: Botones de Acción
+              // Botones de Acción
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
+                      key: const Key('btn_cancelar_incidencia'),
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Cancelar y Volver'),
                     ),
@@ -268,7 +354,8 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: _isSaving ? null : _guardarIncidencia,
+                      key: const Key('btn_guardar_incidencia'),
+                      onPressed: _isSaving ? null : guardarIncidencia,
                       icon: _isSaving
                           ? const SizedBox(
                               width: 16,
@@ -318,18 +405,29 @@ class UbicacionSelectorWidget extends StatelessWidget {
         ? equiposCtrl.equipos.where((e) => e.aulaId == selectedAulaId).toList()
         : <Equipo>[];
 
+    final currentAulaValue = aulas.any((a) => a.id == selectedAulaId) ? selectedAulaId : null;
+    final currentEquipoValue = equiposAula.any((e) => e.id == selectedEquipoId) ? selectedEquipoId : null;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ubicación y Dispositivo', style: theme.textTheme.titleSmall),
+            Row(
+              children: [
+                Icon(Icons.meeting_room_outlined, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('Ubicación y Dispositivo', style: theme.textTheme.titleSmall),
+              ],
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
-              initialValue: selectedAulaId,
+              key: const Key('dropdown_aula'),
+              initialValue: currentAulaValue,
               decoration: const InputDecoration(
-                labelText: 'Aula / Espacio',
+                labelText: 'Aula / Espacio *',
+                hintText: 'Selecciona el aula',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.meeting_room),
               ),
@@ -339,23 +437,42 @@ class UbicacionSelectorWidget extends StatelessWidget {
                   child: Text('${a.nombre} (P${a.planta})'),
                 );
               }).toList(),
+              validator: (val) {
+                if (val == null) {
+                  return 'Por favor, selecciona un aula.';
+                }
+                return null;
+              },
               onChanged: onAulaChanged,
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              initialValue: selectedEquipoId,
-              decoration: const InputDecoration(
-                labelText: 'Equipo Afectado',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.devices),
+            KeyedSubtree(
+              key: ValueKey('subtree_equipo_${selectedAulaId ?? "none"}'),
+              child: DropdownButtonFormField<int>(
+                key: const Key('dropdown_equipo'),
+                initialValue: currentEquipoValue,
+                decoration: InputDecoration(
+                  labelText: 'Equipo Afectado *',
+                  hintText: selectedAulaId == null
+                      ? 'Selecciona un aula primero'
+                      : (equiposAula.isEmpty ? 'No hay equipos en esta aula' : 'Selecciona el equipo'),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.devices),
+                ),
+                items: equiposAula.map((e) {
+                  return DropdownMenuItem<int>(
+                    value: e.id,
+                    child: Text('${e.codigo} • ${e.tipo}'),
+                  );
+                }).toList(),
+                validator: (val) {
+                  if (val == null) {
+                    return 'Por favor, selecciona un equipo.';
+                  }
+                  return null;
+                },
+                onChanged: equiposAula.isEmpty ? null : onEquipoChanged,
               ),
-              items: equiposAula.map((e) {
-                return DropdownMenuItem<int>(
-                  value: e.id,
-                  child: Text('${e.codigo} • ${e.tipo}'),
-                );
-              }).toList(),
-              onChanged: onEquipoChanged,
             ),
           ],
         ),
@@ -383,12 +500,19 @@ class PrioridadChipsSelector extends StatelessWidget {
     final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     return Card(
+      key: const Key('card_prioridad_selector'),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nivel de Urgencia (Prioridad)', style: theme.textTheme.titleSmall),
+            Row(
+              children: [
+                Icon(Icons.flag_outlined, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('Nivel de Urgencia (Prioridad)', style: theme.textTheme.titleSmall),
+              ],
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -398,6 +522,7 @@ class PrioridadChipsSelector extends StatelessWidget {
                 final chipColor = incidenciasColors.colorParaPrioridad(p);
 
                 return ChoiceChip(
+                  key: Key('chip_prioridad_${p.name}'),
                   label: Text(
                     p.value,
                     style: TextStyle(

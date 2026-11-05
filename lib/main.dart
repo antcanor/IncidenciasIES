@@ -205,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () async {
-            final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia);
+            final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _incidenciasCtrl);
             if (res == true) {
               await _incidenciasCtrl.loadIncidencias();
             }
@@ -273,7 +273,9 @@ class _HomeScreenState extends State<HomeScreen> {
             title: const Text('Nueva Incidencia'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, AppRoutes.nuevaIncidencia);
+              Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _incidenciasCtrl).then((res) {
+                if (res == true) _incidenciasCtrl.loadIncidencias();
+              });
             },
           ),
           const Divider(),
@@ -373,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       FilledButton.icon(
                         onPressed: () async {
-                          final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia);
+                          final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _incidenciasCtrl);
                           if (res == true) {
                             await _incidenciasCtrl.loadIncidencias();
                           }

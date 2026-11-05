@@ -60,13 +60,29 @@ class AppRoutes {
         );
 
       case nuevaIncidencia:
-        final int? eqId = settings.arguments as int?;
+        int? eqId;
+        IncidenciasController? incCtrl;
+        AulasController? aCtrl;
+        EquiposController? eqCtrl;
+
+        if (settings.arguments is int) {
+          eqId = settings.arguments as int;
+        } else if (settings.arguments is IncidenciasController) {
+          incCtrl = settings.arguments as IncidenciasController;
+        } else if (settings.arguments is Map<String, dynamic>) {
+          final map = settings.arguments as Map<String, dynamic>;
+          eqId = map['equipoId'] as int?;
+          incCtrl = map['incidenciasCtrl'] as IncidenciasController?;
+          aCtrl = map['aulasCtrl'] as AulasController?;
+          eqCtrl = map['equiposCtrl'] as EquiposController?;
+        }
+
         return MaterialPageRoute(
           builder: (_) => NuevaIncidenciaScreen(
             equipoId: eqId,
-            incidenciasCtrl: defaultIncidenciasController,
-            aulasCtrl: defaultAulasController,
-            equiposCtrl: defaultEquiposController,
+            incidenciasCtrl: incCtrl ?? defaultIncidenciasController,
+            aulasCtrl: aCtrl ?? defaultAulasController,
+            equiposCtrl: eqCtrl ?? defaultEquiposController,
           ),
           settings: settings,
         );

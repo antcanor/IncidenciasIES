@@ -60,7 +60,7 @@ class _PanelScreenState extends State<PanelScreen> {
   }
 
   Future<void> _irANuevaIncidencia() async {
-    final result = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia);
+    final result = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _controller);
     if (result == true || mounted) {
       await _controller.loadIncidencias();
     }

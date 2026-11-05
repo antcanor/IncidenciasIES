@@ -278,6 +278,14 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('Historial'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.historial, arguments: _incidenciasCtrl);
+            },
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.meeting_room_outlined),

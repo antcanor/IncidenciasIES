@@ -7,6 +7,7 @@ class AppRoutes {
   // Rutas de las 10 pantallas
   static const String panel = '/';
   static const String incidencias = '/incidencias';
+  static const String historial = '/historial';
   static const String incidenciaDetalle = '/incidencias/detalle';
   static const String nuevaIncidencia = '/incidencias/nueva';
   static const String aulas = '/aulas';
@@ -47,6 +48,15 @@ class AppRoutes {
         final ctrl = (settings.arguments as IncidenciasController?) ?? defaultIncidenciasController;
         return MaterialPageRoute(
           builder: (_) => IncidenciasListScreen(controller: ctrl),
+          settings: settings,
+        );
+
+      case historial:
+        final controller = settings.arguments is IncidenciasController
+            ? settings.arguments as IncidenciasController
+            : defaultIncidenciasController;
+        return MaterialPageRoute(
+          builder: (_) => HistorialScreen(controller: controller),
           settings: settings,
         );
 

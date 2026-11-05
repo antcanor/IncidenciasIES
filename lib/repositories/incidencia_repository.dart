@@ -185,6 +185,58 @@ class IncidenciaRepository {
     return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
   }
 
+  /// Obtiene únicamente incidencias cerradas mediante JOIN doble, con filtros
+  /// opcionales para aula, texto libre y día de la incidencia.
+  Future<List<IncidenciaDetalle>> getHistorialCerradas({
+    int? aulaId,
+    String? texto,
+    DateTime? fecha,
+  }) async {
+    final db = await _db;
+    final conditions = <String>["i.estado = ?"];
+    final args = <Object>[Estado.cerrada.value];
+
+    if (aulaId != null) {
+      conditions.add('a.id = ?');
+      args.add(aulaId);
+    }
+    if (texto != null && texto.trim().isNotEmpty) {
+      conditions.add('''
+        (LOWER(i.descripcion) LIKE ? OR
+         LOWER(e.codigo) LIKE ? OR
+         LOWER(e.tipo) LIKE ? OR
+         LOWER(a.nombre) LIKE ?)
+      ''');
+      final pattern = '%${texto.trim().toLowerCase()}%';
+      args.addAll([pattern, pattern, pattern, pattern]);
+    }
+    if (fecha != null) {
+      conditions.add("date(i.fecha) = date(?)");
+      args.add(fecha.toIso8601String());
+    }
+
+    final maps = await db.rawQuery('''
+      SELECT
+        i.id AS id,
+        i.equipo_id AS equipo_id,
+        i.descripcion AS descripcion,
+        i.prioridad AS prioridad,
+        i.estado AS estado,
+        i.fecha AS fecha,
+        e.tipo AS equipo_tipo,
+        e.codigo AS equipo_codigo,
+        a.id AS aula_id,
+        a.nombre AS aula_nombre,
+        a.planta AS aula_planta
+      FROM incidencia i
+      INNER JOIN equipo e ON i.equipo_id = e.id
+      INNER JOIN aula a ON e.aula_id = a.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY i.fecha DESC
+    ''', args);
+    return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
+  }
+
   /// Consulta con JOIN doble (incidencia -> equipo -> aula) para una incidencia concreta por su ID.
   Future<IncidenciaDetalle?> getIncidenciaConDetalleById(int id) async {
     final db = await _db;

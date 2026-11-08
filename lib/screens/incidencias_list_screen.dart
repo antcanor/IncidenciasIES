@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:incidencias_ui/incidencias_ui.dart' as ui;
 import '../controllers/incidencias_controller.dart';
 import '../models/estado.dart';
 import '../models/incidencia_detalle.dart';
@@ -139,6 +140,15 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
     Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _controller).then((_) {
       if (mounted) _controller.loadIncidencias();
     });
+  }
+
+  ui.Priority _toUiPriority(Prioridad priority) {
+    return switch (priority) {
+      Prioridad.baja => ui.Priority.low,
+      Prioridad.media => ui.Priority.medium,
+      Prioridad.alta => ui.Priority.high,
+      Prioridad.urgente => ui.Priority.urgent,
+    };
   }
 
   @override
@@ -527,15 +537,18 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Chip(
-                    label: Text(
-                      inc.prioridad.value,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  ui.PriorityBadge(
+                    priority: _toUiPriority(inc.prioridad),
+                    semanticLabel: 'Cambiar prioridad de incidencia ${inc.id}',
+                    onChanged: (priority) => _cambiarPrioridadIncidencia(
+                      inc,
+                      switch (priority) {
+                        ui.Priority.low => Prioridad.baja,
+                        ui.Priority.medium => Prioridad.media,
+                        ui.Priority.high => Prioridad.alta,
+                        ui.Priority.urgent => Prioridad.urgente,
+                      },
                     ),
-                    backgroundColor: colorPrioridad,
-                    visualDensity: VisualDensity.compact,
-                    side: BorderSide.none,
-                    padding: EdgeInsets.zero,
                   ),
                   const SizedBox(width: 6),
                   Chip(

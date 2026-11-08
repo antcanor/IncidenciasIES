@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+export 'priority_badge.dart';
+
 /// Etiqueta reutilizable para identificar una vista AR simulada.
 class MaquetaArBadge extends StatelessWidget {
   const MaquetaArBadge({super.key});

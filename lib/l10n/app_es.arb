@@ -1,0 +1,19 @@
+{
+  "@@locale": "es",
+  "settings": "Ajustes",
+  "permissions": "Permisos",
+  "camera": "Cámara",
+  "microphone": "Micrófono",
+  "request": "Pedir permiso",
+  "granted": "Concedido",
+  "denied": "No concedido",
+  "language": "Idioma",
+  "theme": "Tema",
+  "light": "Claro",
+  "dark": "Oscuro",
+  "spanish": "Español",
+  "english": "Inglés",
+  "permissionOnlyOnUse": "Los permisos solo se solicitan al pulsar el botón.",
+  "permissionUpdated": "Permiso actualizado.",
+  "permissionError": "No se pudo consultar el permiso."
+}

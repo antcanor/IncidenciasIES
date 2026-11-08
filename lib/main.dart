@@ -1,7 +1,9 @@
 import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+
 import 'controllers/controllers.dart';
 import 'database/database_helper.dart';
 import 'database/database_seeder.dart';
@@ -9,6 +11,7 @@ import 'models/models.dart';
 import 'routes/app_routes.dart';
 import 'theme/theme.dart';
 import 'settings/settings.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +62,7 @@ class IncidenciasApp extends StatelessWidget {
           locale: localeCtrl.locale,
           supportedLocales: AppStrings.supportedLocales,
           localizationsDelegates: const [
+            AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
@@ -189,7 +193,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 return IconButton(
                   key: const Key('theme_toggle_button'),
                   icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-                  tooltip: isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
+                  tooltip: isDark
+                      ? 'Cambiar a modo claro'
+                      : 'Cambiar a modo oscuro',
                   onPressed: _themeCtrl.toggleTheme,
                 );
               },
@@ -223,7 +229,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () async {
-            final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _incidenciasCtrl);
+            final res = await Navigator.pushNamed(
+              context,
+              AppRoutes.nuevaIncidencia,
+              arguments: _incidenciasCtrl,
+            );
             if (res == true) {
               await _incidenciasCtrl.loadIncidencias();
             }
@@ -291,7 +301,11 @@ class _HomeScreenState extends State<HomeScreen> {
             title: const Text('Nueva Incidencia'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _incidenciasCtrl).then((res) {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.nuevaIncidencia,
+                arguments: _incidenciasCtrl,
+              ).then((res) {
                 if (res == true) _incidenciasCtrl.loadIncidencias();
               });
             },
@@ -301,7 +315,11 @@ class _HomeScreenState extends State<HomeScreen> {
             title: const Text('Historial'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, AppRoutes.historial, arguments: _incidenciasCtrl);
+              Navigator.pushNamed(
+                context,
+                AppRoutes.historial,
+                arguments: _incidenciasCtrl,
+              );
             },
           ),
           ListTile(
@@ -424,7 +442,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       FilledButton.icon(
                         onPressed: () async {
-                          final res = await Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _incidenciasCtrl);
+                          final res = await Navigator.pushNamed(
+                            context,
+                            AppRoutes.nuevaIncidencia,
+                            arguments: _incidenciasCtrl,
+                          );
                           if (res == true) {
                             await _incidenciasCtrl.loadIncidencias();
                           }
@@ -532,22 +554,34 @@ class _HomeScreenState extends State<HomeScreen> {
                         foregroundColor: colorScheme.onPrimaryContainer,
                         child: Text(
                           'P$planta',
-                          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       title: Text(nombre, style: theme.textTheme.titleSmall),
-                      subtitle: Text('Planta $planta', style: theme.textTheme.bodySmall),
+                      subtitle: Text(
+                        'Planta $planta',
+                        style: theme.textTheme.bodySmall,
+                      ),
                       trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: total > 0 ? colorScheme.tertiaryContainer : colorScheme.surfaceContainerHighest,
+                          color: total > 0
+                              ? colorScheme.tertiaryContainer
+                              : colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
                           '$total incidencias',
                           style: theme.textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: total > 0 ? colorScheme.onTertiaryContainer : colorScheme.onSurfaceVariant,
+                            color: total > 0
+                                ? colorScheme.onTertiaryContainer
+                                : colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -562,7 +596,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMetricCard(String title, int count, Color accentColor, IconData icon) {
+  Widget _buildMetricCard(
+    String title,
+    int count,
+    Color accentColor,
+    IconData icon,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -588,7 +627,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -626,7 +667,9 @@ class _HomeScreenState extends State<HomeScreen> {
             // Filtro por aula usando surfaceContainerHighest
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              color: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.45,
+              ),
               child: Row(
                 children: [
                   Icon(Icons.filter_list, size: 20, color: colorScheme.primary),
@@ -642,12 +685,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       items: [
                         DropdownMenuItem<int?>(
                           value: null,
-                          child: Text('Todas las aulas (JOIN completo)', style: theme.textTheme.bodyMedium),
+                          child: Text(
+                            'Todas las aulas (JOIN completo)',
+                            style: theme.textTheme.bodyMedium,
+                          ),
                         ),
-                        ...aulas.map((a) => DropdownMenuItem<int?>(
-                              value: a.id,
-                              child: Text('${a.nombre} (Planta ${a.planta})', style: theme.textTheme.bodyMedium),
-                            )),
+                        ...aulas.map(
+                          (a) => DropdownMenuItem<int?>(
+                            value: a.id,
+                            child: Text(
+                              '${a.nombre} (Planta ${a.planta})',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                        ),
                       ],
                       onChanged: (val) {
                         _incidenciasCtrl.setFiltroAula(val);
@@ -662,131 +713,177 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _incidenciasCtrl.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : incidencias.isEmpty
-                      ? Center(child: Text('No hay incidencias para este filtro.', style: theme.textTheme.bodyMedium))
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: incidencias.length,
-                          itemBuilder: (context, index) {
-                            final det = incidencias[index];
-                            final bool esCerrada = det.estado == Estado.cerrada;
-                            final colorPrioridad = incidenciasColors.colorParaPrioridad(det.prioridad);
-                            final colorEstado = incidenciasColors.colorParaEstado(det.estado);
+                  ? Center(
+                      child: Text(
+                        'No hay incidencias para este filtro.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: incidencias.length,
+                      itemBuilder: (context, index) {
+                        final det = incidencias[index];
+                        final bool esCerrada = det.estado == Estado.cerrada;
+                        final colorPrioridad = incidenciasColors
+                            .colorParaPrioridad(det.prioridad);
+                        final colorEstado = incidenciasColors.colorParaEstado(
+                          det.estado,
+                        );
 
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () => Navigator.pushNamed(
-                                  context,
-                                  AppRoutes.incidenciaDetalle,
-                                  arguments: det.id,
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.incidenciaDetalle,
+                              arguments: det.id,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Row(
-                                            children: [
-                                              Icon(Icons.meeting_room, size: 16, color: colorScheme.primary),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                det.aulaNombre,
-                                                style: theme.textTheme.titleSmall,
-                                              ),
-                                              Text(
-                                                ' (P${det.aulaPlanta})',
-                                                style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                                              ),
-                                            ],
+                                          Icon(
+                                            Icons.meeting_room,
+                                            size: 16,
+                                            color: colorScheme.primary,
                                           ),
-                                          Row(
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(Icons.info_outline, color: colorScheme.primary, size: 20),
-                                                tooltip: 'Ver detalle incidencia #${det.id}',
-                                                onPressed: () => Navigator.pushNamed(
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            det.aulaNombre,
+                                            style: theme.textTheme.titleSmall,
+                                          ),
+                                          Text(
+                                            ' (P${det.aulaPlanta})',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.info_outline,
+                                              color: colorScheme.primary,
+                                              size: 20,
+                                            ),
+                                            tooltip:
+                                                'Ver detalle incidencia #${det.id}',
+                                            onPressed: () =>
+                                                Navigator.pushNamed(
                                                   context,
                                                   AppRoutes.incidenciaDetalle,
                                                   arguments: det.id,
                                                 ),
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.delete_outline, color: colorScheme.error, size: 20),
-                                                tooltip: 'Eliminar incidencia',
-                                                onPressed: () => _incidenciasCtrl.deleteIncidencia(det.id),
-                                              ),
-                                            ],
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.devices, size: 15, color: colorScheme.secondary),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${det.equipoCodigo} • ${det.equipoTipo}',
-                                            style: theme.textTheme.bodyMedium?.copyWith(
-                                              color: colorScheme.secondary,
-                                              fontWeight: FontWeight.w600,
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.delete_outline,
+                                              color: colorScheme.error,
+                                              size: 20,
                                             ),
+                                            tooltip: 'Eliminar incidencia',
+                                            onPressed: () => _incidenciasCtrl
+                                                .deleteIncidencia(det.id),
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(det.descripcion, style: theme.textTheme.bodyMedium),
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          Chip(
-                                            label: Text(
-                                              det.prioridad.value,
-                                              style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
-                                            ),
-                                            backgroundColor: colorPrioridad,
-                                            visualDensity: VisualDensity.compact,
-                                            side: BorderSide.none,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Chip(
-                                            label: Text(
-                                              det.estado.value,
-                                              style: theme.textTheme.labelSmall?.copyWith(color: Colors.white),
-                                            ),
-                                            backgroundColor: colorEstado,
-                                            visualDensity: VisualDensity.compact,
-                                            side: BorderSide.none,
-                                          ),
-                                          const Spacer(),
-                                          if (!esCerrada)
-                                            TextButton.icon(
-                                              onPressed: () => _cerrarIncidencia(det.id),
-                                              icon: Icon(Icons.check, size: 16, color: colorScheme.secondary),
-                                              label: Text(
-                                                'Cerrar',
-                                                style: TextStyle(
-                                                  color: colorScheme.secondary,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              style: TextButton.styleFrom(
-                                                backgroundColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                                                visualDensity: VisualDensity.compact,
-                                              ),
-                                            ),
                                         ],
                                       ),
                                     ],
                                   ),
-                                ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.devices,
+                                        size: 15,
+                                        color: colorScheme.secondary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${det.equipoCodigo} • ${det.equipoTipo}',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              color: colorScheme.secondary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    det.descripcion,
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Chip(
+                                        label: Text(
+                                          det.prioridad.value,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(color: Colors.white),
+                                        ),
+                                        backgroundColor: colorPrioridad,
+                                        visualDensity: VisualDensity.compact,
+                                        side: BorderSide.none,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Chip(
+                                        label: Text(
+                                          det.estado.value,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(color: Colors.white),
+                                        ),
+                                        backgroundColor: colorEstado,
+                                        visualDensity: VisualDensity.compact,
+                                        side: BorderSide.none,
+                                      ),
+                                      const Spacer(),
+                                      if (!esCerrada)
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _cerrarIncidencia(det.id),
+                                          icon: Icon(
+                                            Icons.check,
+                                            size: 16,
+                                            color: colorScheme.secondary,
+                                          ),
+                                          label: Text(
+                                            'Cerrar',
+                                            style: TextStyle(
+                                              color: colorScheme.secondary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          style: TextButton.styleFrom(
+                                            backgroundColor: colorScheme
+                                                .secondaryContainer
+                                                .withValues(alpha: 0.5),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         );
@@ -814,7 +911,9 @@ class _HomeScreenState extends State<HomeScreen> {
           itemCount: aulas.length,
           itemBuilder: (context, index) {
             final aula = aulas[index];
-            final equiposAula = equipos.where((e) => e.aulaId == aula.id).toList();
+            final equiposAula = equipos
+                .where((e) => e.aulaId == aula.id)
+                .toList();
 
             return Card(
               margin: const EdgeInsets.only(bottom: 16),
@@ -832,19 +931,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: Text(aula.nombre, style: theme.textTheme.titleMedium),
                 subtitle: Text(
                   'Planta ${aula.planta} • ${equiposAula.length} equipos asignados (Toca para detalle)',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 children: equiposAula.map((eq) {
                   return ListTile(
-                    leading: Icon(Icons.devices, size: 20, color: colorScheme.secondary),
-                    title: Text(eq.codigo, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    leading: Icon(
+                      Icons.devices,
+                      size: 20,
+                      color: colorScheme.secondary,
+                    ),
+                    title: Text(
+                      eq.codigo,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     subtitle: Text(eq.tipo, style: theme.textTheme.bodySmall),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'ID #${eq.id}',
-                          style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.outline,
+                          ),
                         ),
                         const SizedBox(width: 4),
                         const Icon(Icons.arrow_forward_ios, size: 12),
@@ -871,9 +983,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final colorScheme = theme.colorScheme;
 
     return ListenableBuilder(
-      listenable: Listenable.merge([_aulasCtrl, _equiposCtrl, _incidenciasCtrl]),
+      listenable: Listenable.merge([
+        _aulasCtrl,
+        _equiposCtrl,
+        _incidenciasCtrl,
+      ]),
       builder: (context, _) {
-        final totalFilas = _aulasCtrl.totalAulas +
+        final totalFilas =
+            _aulasCtrl.totalAulas +
             _equiposCtrl.totalEquipos +
             _incidenciasCtrl.totalIncidencias;
 
@@ -888,30 +1005,58 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Estado de la Base de Datos', style: theme.textTheme.titleMedium),
+                      Text(
+                        'Estado de la Base de Datos',
+                        style: theme.textTheme.titleMedium,
+                      ),
                       const Divider(height: 24),
                       ListTile(
                         dense: true,
-                        leading: Icon(Icons.computer, color: colorScheme.primary),
-                        title: Text('Plataforma activa', style: theme.textTheme.titleSmall),
-                        subtitle: Text(_platformName, style: theme.textTheme.bodySmall),
+                        leading: Icon(
+                          Icons.computer,
+                          color: colorScheme.primary,
+                        ),
+                        title: Text(
+                          'Plataforma activa',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        subtitle: Text(
+                          _platformName,
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ),
                       ListTile(
                         dense: true,
-                        leading: Icon(Icons.vpn_key, color: colorScheme.primary),
-                        title: Text('PRAGMA foreign_keys', style: theme.textTheme.titleSmall),
+                        leading: Icon(
+                          Icons.vpn_key,
+                          color: colorScheme.primary,
+                        ),
+                        title: Text(
+                          'PRAGMA foreign_keys',
+                          style: theme.textTheme.titleSmall,
+                        ),
                         subtitle: Text(
-                          _fksEnabled ? 'ON (1 - Activadas)' : 'OFF (Desactivadas)',
+                          _fksEnabled
+                              ? 'ON (1 - Activadas)'
+                              : 'OFF (Desactivadas)',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: _fksEnabled ? colorScheme.primary : colorScheme.error,
+                            color: _fksEnabled
+                                ? colorScheme.primary
+                                : colorScheme.error,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                       ListTile(
                         dense: true,
-                        leading: Icon(Icons.storage, color: colorScheme.primary),
-                        title: Text('Total registros sincronizados', style: theme.textTheme.titleSmall),
+                        leading: Icon(
+                          Icons.storage,
+                          color: colorScheme.primary,
+                        ),
+                        title: Text(
+                          'Total registros sincronizados',
+                          style: theme.textTheme.titleSmall,
+                        ),
                         subtitle: Text(
                           '$totalFilas registros sincronizados en ChangeNotifier',
                           style: theme.textTheme.bodySmall,
@@ -919,9 +1064,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       ListTile(
                         dense: true,
-                        leading: Icon(Icons.folder_open, color: colorScheme.primary),
-                        title: Text('Ruta SQLite', style: theme.textTheme.titleSmall),
-                        subtitle: SelectableText(_dbPath ?? '', style: theme.textTheme.bodySmall),
+                        leading: Icon(
+                          Icons.folder_open,
+                          color: colorScheme.primary,
+                        ),
+                        title: Text(
+                          'Ruta SQLite',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        subtitle: SelectableText(
+                          _dbPath ?? '',
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ),
                     ],
                   ),

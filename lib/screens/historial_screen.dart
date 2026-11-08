@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:incidencias_ui/incidencias_ui.dart' as ui;
 
 import '../controllers/incidencias_controller.dart';
 import '../models/estado.dart';
 import '../models/aula.dart';
 import '../models/incidencia_detalle.dart';
+import '../models/prioridad.dart';
 import '../repositories/aula_repository.dart';
 import '../repositories/incidencia_repository.dart';
+import '../routes/app_routes.dart';
+import '../theme/theme.dart';
 
 class HistorialScreen extends StatefulWidget {
   final IncidenciasController? controller;
@@ -97,6 +101,15 @@ class _HistorialScreenState extends State<HistorialScreen> {
         ),
       );
     }
+  }
+
+  ui.Priority _toUiPriority(Prioridad priority) {
+    return switch (priority) {
+      Prioridad.baja => ui.Priority.low,
+      Prioridad.media => ui.Priority.medium,
+      Prioridad.alta => ui.Priority.high,
+      Prioridad.urgente => ui.Priority.urgent,
+    };
   }
 
   @override
@@ -234,20 +247,32 @@ class _HistorialScreenState extends State<HistorialScreen> {
         itemCount: _incidencias.length,
         itemBuilder: (context, index) {
           final incidencia = _incidencias[index];
-          return Card(
-            child: ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.archive)),
-              title: Text(incidencia.descripcion),
-              subtitle: Text(
-                '${incidencia.aulaNombre} · ${incidencia.equipoCodigo}\n'
-                '${_formatDate(incidencia.fecha)} · ${incidencia.prioridad.value}',
-              ),
-              isThreeLine: true,
-              trailing: TextButton(
-                key: Key('reabrir_${incidencia.id}'),
-                onPressed: () => _reabrir(incidencia),
-                child: const Text('Reabrir'),
-              ),
+          final colors =
+              Theme.of(context).extension<IncidenciasColors>() ??
+              IncidenciasColors.light;
+          return ui.IncidentCard(
+            incident: ui.IncidentCardData(
+              id: incidencia.id,
+              title: incidencia.descripcion,
+              details:
+                  '${incidencia.aulaNombre} · ${incidencia.equipoCodigo} · '
+                  '${_formatDate(incidencia.fecha)}',
+              priority: _toUiPriority(incidencia.prioridad),
+              status: incidencia.estado.value,
+              priorityColor: colors.colorParaPrioridad(incidencia.prioridad),
+              statusColor: colors.colorParaEstado(incidencia.estado),
+            ),
+            showClose: false,
+            onClose: (_) {},
+            onComment: (data) => Navigator.pushNamed(
+              context,
+              AppRoutes.incidenciaDetalle,
+              arguments: data.id,
+            ),
+            trailing: TextButton(
+              key: Key('reabrir_${incidencia.id}'),
+              onPressed: () => _reabrir(incidencia),
+              child: const Text('Reabrir'),
             ),
           );
         },

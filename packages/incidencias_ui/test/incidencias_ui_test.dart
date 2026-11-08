@@ -32,4 +32,36 @@ void main() {
 
     expect(selected, Priority.urgent);
   });
+
+  testWidgets('emite eventos tipados de cierre y comentario', (tester) async {
+    IncidentCardData? closed;
+    IncidentCardData? commented;
+    const incident = IncidentCardData(
+      id: 8,
+      title: 'Proyector sin imagen',
+      details: 'Aula 204 · PROY-204-01',
+      priority: Priority.high,
+      status: 'ABIERTA',
+      priorityColor: Colors.deepOrange,
+      statusColor: Colors.red,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: IncidentCard(
+            incident: incident,
+            onClose: (value) => closed = value,
+            onComment: (value) => commented = value,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('btn_comentar_8')));
+    await tester.tap(find.byKey(const Key('btn_cerrar_8')));
+
+    expect(commented, same(incident));
+    expect(closed, same(incident));
+  });
 }

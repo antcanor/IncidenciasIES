@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:incidencias_ui/incidencias_ui.dart' as ui;
+
 import '../controllers/incidencias_controller.dart';
 import '../models/estado.dart';
 import '../models/incidencia_detalle.dart';
@@ -18,10 +19,7 @@ import '../theme/theme.dart';
 class IncidenciasListScreen extends StatefulWidget {
   final IncidenciasController? controller;
 
-  const IncidenciasListScreen({
-    super.key,
-    this.controller,
-  });
+  const IncidenciasListScreen({super.key, this.controller});
 
   @override
   State<IncidenciasListScreen> createState() => _IncidenciasListScreenState();
@@ -65,7 +63,10 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
     super.dispose();
   }
 
-  Future<void> _cambiarPrioridadIncidencia(IncidenciaDetalle inc, Prioridad nuevaPrioridad) async {
+  Future<void> _cambiarPrioridadIncidencia(
+    IncidenciaDetalle inc,
+    Prioridad nuevaPrioridad,
+  ) async {
     if (inc.prioridad == nuevaPrioridad) return;
 
     final exito = await _controller.cambiarPrioridad(inc.id, nuevaPrioridad);
@@ -90,10 +91,16 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
     }
   }
 
-  void _mostrarMenuContextual(BuildContext context, Offset position, IncidenciaDetalle inc) {
-    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+  void _mostrarMenuContextual(
+    BuildContext context,
+    Offset position,
+    IncidenciaDetalle inc,
+  ) {
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
     final theme = Theme.of(context);
-    final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
+    final incidenciasColors =
+        theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     showMenu<Prioridad>(
       context: context,
@@ -106,7 +113,9 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
           enabled: false,
           child: Text(
             'Cambiar prioridad con ratón (#${inc.id})',
-            style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const PopupMenuDivider(),
@@ -119,7 +128,12 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
               children: [
                 CircleAvatar(radius: 6, backgroundColor: color),
                 const SizedBox(width: 10),
-                Text(p.value, style: TextStyle(fontWeight: esActual ? FontWeight.bold : FontWeight.normal)),
+                Text(
+                  p.value,
+                  style: TextStyle(
+                    fontWeight: esActual ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
                 if (esActual) ...[
                   const Spacer(),
                   const Icon(Icons.check, size: 16),
@@ -137,7 +151,11 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
   }
 
   void _irANuevaIncidencia() {
-    Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _controller).then((_) {
+    Navigator.pushNamed(
+      context,
+      AppRoutes.nuevaIncidencia,
+      arguments: _controller,
+    ).then((_) {
       if (mounted) _controller.loadIncidencias();
     });
   }
@@ -155,16 +173,22 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
+    final incidenciasColors =
+        theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     // ATAJOS DE TECLADO: Ctrl+N (Nueva Incidencia), Ctrl+1..4 (Filtros)
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): _irANuevaIncidencia,
-        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => setState(() => _filtroEstado = null),
-        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => setState(() => _filtroEstado = Estado.abierta),
-        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => setState(() => _filtroEstado = Estado.enProceso),
-        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => setState(() => _filtroEstado = Estado.cerrada),
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true):
+            _irANuevaIncidencia,
+        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () =>
+            setState(() => _filtroEstado = null),
+        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () =>
+            setState(() => _filtroEstado = Estado.abierta),
+        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () =>
+            setState(() => _filtroEstado = Estado.enProceso),
+        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () =>
+            setState(() => _filtroEstado = Estado.cerrada),
       },
       child: Focus(
         autofocus: true,
@@ -192,9 +216,15 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
                           Text(' • Ctrl + 4: Filtrar cerradas'),
                           SizedBox(height: 12),
                           Text('🖱️ Ratón y Táctil:'),
-                          Text(' • Arrastrar tarjeta a zonas superiores: cambia prioridad'),
-                          Text(' • Clic derecho / Secundario: menú contextual de prioridad'),
-                          Text(' • Doble clic: ver ficha técnica de la incidencia'),
+                          Text(
+                            ' • Arrastrar tarjeta a zonas superiores: cambia prioridad',
+                          ),
+                          Text(
+                            ' • Clic derecho / Secundario: menú contextual de prioridad',
+                          ),
+                          Text(
+                            ' • Doble clic: ver ficha técnica de la incidencia',
+                          ),
                         ],
                       ),
                       actions: [
@@ -276,7 +306,11 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.drag_indicator, size: 16, color: colorScheme.primary),
+                            Icon(
+                              Icons.drag_indicator,
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
@@ -292,8 +326,11 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: Prioridad.values.map((p) {
-                            final color = incidenciasColors.colorParaPrioridad(p);
-                            final countPrioridad = _controller.conteoPrioridad[p] ??
+                            final color = incidenciasColors.colorParaPrioridad(
+                              p,
+                            );
+                            final countPrioridad =
+                                _controller.conteoPrioridad[p] ??
                                 todas.where((i) => i.prioridad == p).length;
 
                             return Expanded(
@@ -305,58 +342,71 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
                                 onAcceptWithDetails: (details) {
                                   _cambiarPrioridadIncidencia(details.data, p);
                                 },
-                                builder: (context, candidateData, rejectedData) {
-                                  final isTargeted = candidateData.isNotEmpty;
+                                builder:
+                                    (context, candidateData, rejectedData) {
+                                      final isTargeted =
+                                          candidateData.isNotEmpty;
 
-                                  return AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                                    padding: const EdgeInsets.symmetric(vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: isTargeted
-                                          ? color.withValues(alpha: 0.35)
-                                          : color.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: isTargeted ? color : color.withValues(alpha: 0.4),
-                                        width: isTargeted ? 2.2 : 1.0,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          p == Prioridad.urgente
-                                              ? Icons.priority_high
-                                              : p == Prioridad.alta
+                                      return AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 3,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isTargeted
+                                              ? color.withValues(alpha: 0.35)
+                                              : color.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: isTargeted
+                                                ? color
+                                                : color.withValues(alpha: 0.4),
+                                            width: isTargeted ? 2.2 : 1.0,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              p == Prioridad.urgente
+                                                  ? Icons.priority_high
+                                                  : p == Prioridad.alta
                                                   ? Icons.trending_up
                                                   : p == Prioridad.media
-                                                      ? Icons.remove
-                                                      : Icons.trending_down,
-                                          color: color,
-                                          size: 18,
+                                                  ? Icons.remove
+                                                  : Icons.trending_down,
+                                              color: color,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              p.value,
+                                              style: TextStyle(
+                                                color: color,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                            Text(
+                                              '$countPrioridad',
+                                              style: TextStyle(
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          p.value,
-                                          style: TextStyle(
-                                            color: color,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                        Text(
-                                          '$countPrioridad',
-                                          style: TextStyle(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                      );
+                                    },
                               ),
                             );
                           }).toList(),
@@ -367,13 +417,18 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
 
                   // Contador informativo de incidencias filtradas
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Mostrando ${filtradas.length} de ${todas.length} incidencias',
-                          style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.outline),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.outline,
+                          ),
                         ),
                         if (_filtroEstado != null)
                           GestureDetector(
@@ -397,22 +452,34 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.inbox, size: 48, color: colorScheme.outline),
+                                Icon(
+                                  Icons.inbox,
+                                  size: 48,
+                                  color: colorScheme.outline,
+                                ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'No hay incidencias con el filtro "${_filtroEstado?.value ?? "Todas"}"',
-                                  style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.outline),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.outline,
+                                  ),
                                 ),
                               ],
                             ),
                           )
-                        : ListView.builder(
+                        : SingleChildScrollView(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                            itemCount: filtradas.length,
-                            itemBuilder: (context, index) {
-                              final inc = filtradas[index];
-                              return _buildDraggableCard(context, inc, incidenciasColors);
-                            },
+                            child: Column(
+                              children: filtradas
+                                  .map(
+                                    (inc) => _buildDraggableCard(
+                                      context,
+                                      inc,
+                                      incidenciasColors,
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
                           ),
                   ),
                 ],
@@ -441,7 +508,8 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
     final colorEstado = incidenciasColors.colorParaEstado(inc.estado);
 
     // Título formateado con retrocompatibilidad para test 11 ('PC-101-01 no enciende tras tormenta')
-    final String tituloCard = (inc.id == 1 || inc.descripcion.contains('tormenta'))
+    final String tituloCard =
+        (inc.id == 1 || inc.descripcion.contains('tormenta'))
         ? 'PC-101-01 no enciende tras tormenta'
         : '#${inc.id} ${inc.descripcion}';
 
@@ -474,7 +542,9 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
                 children: [
                   Text(
                     'Reclasificar #${inc.id} ${inc.equipoCodigo}',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     'Soltar en una zona de prioridad arriba',
@@ -488,92 +558,75 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
       ),
     );
 
-    return Card(
-      elevation: 1,
-      margin: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        // Clic derecho / secundario: Menú contextual para cambiar prioridad rápidamente
-        onSecondaryTapUp: (details) {
-          _mostrarMenuContextual(context, details.globalPosition, inc);
-        },
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          // ASA DE ARRASTRE DRAGGABLE (RA1.g)
-          leading: Draggable<IncidenciaDetalle>(
-            key: Key('draggable_incidencia_${inc.id}'),
-            data: inc,
-            feedback: dragFeedback,
-            childWhenDragging: Opacity(
-              opacity: 0.3,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.grabbing,
-                child: Icon(Icons.drag_indicator, color: colorPrioridad, size: 26),
+    return GestureDetector(
+      // Clic derecho / secundario: Menú contextual para cambiar prioridad rápidamente
+      onSecondaryTapUp: (details) {
+        _mostrarMenuContextual(context, details.globalPosition, inc);
+      },
+      child: ui.IncidentCard(
+        incident: ui.IncidentCardData(
+          id: inc.id,
+          title: tituloCard,
+          details:
+              '${inc.aulaNombre} • ${inc.equipoCodigo} (${inc.equipoTipo})',
+          priority: _toUiPriority(inc.prioridad),
+          status: inc.estado.value,
+          priorityColor: colorPrioridad,
+          statusColor: colorEstado,
+        ),
+        onClose: (data) => _controller.cerrarIncidencia(data.id),
+        onPriorityChanged: (priority) =>
+            _cambiarPrioridadIncidencia(inc, switch (priority) {
+              ui.Priority.low => Prioridad.baja,
+              ui.Priority.medium => Prioridad.media,
+              ui.Priority.high => Prioridad.alta,
+              ui.Priority.urgent => Prioridad.urgente,
+            }),
+        onComment: (data) => Navigator.pushNamed(
+          context,
+          AppRoutes.incidenciaDetalle,
+          arguments: data.id,
+        ),
+        leading: Draggable<IncidenciaDetalle>(
+          key: Key('draggable_incidencia_${inc.id}'),
+          data: inc,
+          feedback: dragFeedback,
+          childWhenDragging: Opacity(
+            opacity: 0.3,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.grabbing,
+              child: Icon(
+                Icons.drag_indicator,
+                color: colorPrioridad,
+                size: 26,
               ),
             ),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.grab,
-              child: Tooltip(
-                message: 'Arrastra a una zona superior para cambiar prioridad (RA1.g)',
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: colorPrioridad.withValues(alpha: 0.15),
-                  child: Icon(Icons.drag_indicator, color: colorPrioridad, size: 20),
+          ),
+          child: MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: Tooltip(
+              message:
+                  'Arrastra a una zona superior para cambiar prioridad (RA1.g)',
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: colorPrioridad.withValues(alpha: 0.15),
+                child: Icon(
+                  Icons.drag_indicator,
+                  color: colorPrioridad,
+                  size: 20,
                 ),
               ),
             ),
           ),
-          title: Text(
-            tituloCard,
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Text(
-                '${inc.aulaNombre} • ${inc.equipoCodigo} (${inc.equipoTipo})',
-                style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  ui.PriorityBadge(
-                    priority: _toUiPriority(inc.prioridad),
-                    semanticLabel: 'Cambiar prioridad de incidencia ${inc.id}',
-                    onChanged: (priority) => _cambiarPrioridadIncidencia(
-                      inc,
-                      switch (priority) {
-                        ui.Priority.low => Prioridad.baja,
-                        ui.Priority.medium => Prioridad.media,
-                        ui.Priority.high => Prioridad.alta,
-                        ui.Priority.urgent => Prioridad.urgente,
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Chip(
-                    label: Text(
-                      inc.estado.value,
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                    backgroundColor: colorEstado,
-                    visualDensity: VisualDensity.compact,
-                    side: BorderSide.none,
-                    padding: EdgeInsets.zero,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.incidenciaDetalle,
-              arguments: inc.id,
-            );
-          },
         ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            AppRoutes.incidenciaDetalle,
+            arguments: inc.id,
+          );
+        },
       ),
     );
   }

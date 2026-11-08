@@ -42,6 +42,7 @@ void main() {
 
     expect(find.text('Vista AR (maqueta)'), findsOneWidget);
     expect(find.text('VISTA DE CÁMARA · MAQUETA'), findsOneWidget);
+    expect(find.byKey(const Key('btn_ar_actualizar')), findsOneWidget);
     expect(find.text('PROY-204-01'), findsOneWidget);
     expect(find.byKey(const ValueKey('ar_incidencia_7')), findsOneWidget);
     expect(find.text('Lámpara del proyector parpadea'), findsOneWidget);

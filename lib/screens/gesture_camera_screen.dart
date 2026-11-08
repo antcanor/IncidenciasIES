@@ -39,6 +39,7 @@ class _GestureCameraScreenState extends State<GestureCameraScreen> {
       if (mounted) setState(() => _initializing = false);
       return;
     }
+    CameraController? camera;
     try {
       final permission = await Permission.camera.request();
       if (!permission.isGranted) {
@@ -51,7 +52,7 @@ class _GestureCameraScreenState extends State<GestureCameraScreen> {
         throw StateError('No hay ninguna cámara disponible.');
       }
 
-      final camera = CameraController(
+      camera = CameraController(
         cameras.first,
         ResolutionPreset.medium,
         enableAudio: false,
@@ -66,6 +67,7 @@ class _GestureCameraScreenState extends State<GestureCameraScreen> {
       await camera.startImageStream(_processCameraImage);
       if (!mounted) {
         await camera.dispose();
+        await _poseDetector?.close();
         return;
       }
       setState(() {
@@ -74,6 +76,9 @@ class _GestureCameraScreenState extends State<GestureCameraScreen> {
         _initializing = false;
       });
     } catch (error) {
+      await camera?.dispose();
+      await _poseDetector?.close();
+      _poseDetector = null;
       if (!mounted) return;
       setState(() {
         _error = '$error';

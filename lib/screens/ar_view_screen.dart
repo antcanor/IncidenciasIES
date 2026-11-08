@@ -35,8 +35,9 @@ class _ArViewScreenState extends State<ArViewScreen> {
 
   Future<void> _loadHistory() async {
     try {
-      final incidencias =
-          await _repository.getIncidenciasPorEquipo(widget.equipoId);
+      final incidencias = await _repository.getIncidenciasPorEquipo(
+        widget.equipoId,
+      );
       if (!mounted) return;
       setState(() {
         _incidencias = incidencias;
@@ -71,6 +72,18 @@ class _ArViewScreenState extends State<ArViewScreen> {
             child: Column(
               children: [
                 _buildHeader(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      key: const Key('btn_ar_actualizar'),
+                      onPressed: _loadHistory,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Actualizar historial'),
+                    ),
+                  ),
+                ),
                 Expanded(child: _buildHistoryOverlay()),
               ],
             ),
@@ -102,10 +115,8 @@ class _ArViewScreenState extends State<ArViewScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'VISTA DE CÁMARA · MAQUETA',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        letterSpacing: 1.2,
-                      ),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: Colors.white, letterSpacing: 1.2),
                 ),
               ],
             ),
@@ -166,7 +177,10 @@ class _ArViewScreenState extends State<ArViewScreen> {
           key: ValueKey('ar_incidencia_${incidencia.id}'),
           color: Colors.black.withValues(alpha: 0.78),
           child: ListTile(
-            leading: const Icon(Icons.warning_amber, color: Colors.orangeAccent),
+            leading: const Icon(
+              Icons.warning_amber,
+              color: Colors.orangeAccent,
+            ),
             title: Text(
               incidencia.descripcion,
               style: const TextStyle(color: Colors.white),

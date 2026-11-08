@@ -47,6 +47,8 @@ dependencies:
   sensors_plus: ^7.1.1
   incidencias_ui:
     path: packages/incidencias_ui
+  camera: ^0.12.2
+  google_mlkit_pose_detection: ^1.0.1
 
 dev_dependencies:
   flutter_test:

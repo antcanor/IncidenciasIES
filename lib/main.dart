@@ -305,6 +305,14 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.accessibility_new),
+            title: const Text('Cámara por gesto'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.gestureCamera);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Ajustes'),
             onTap: () {

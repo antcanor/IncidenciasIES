@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:incidencias_ui/incidencias_ui.dart' as ui;
 import '../controllers/incidencias_controller.dart';
 import '../models/estado.dart';
+import '../models/incidencia_detalle.dart';
 import '../models/prioridad.dart';
 import '../routes/app_routes.dart';
 import '../theme/theme.dart';
@@ -77,6 +79,31 @@ class _PanelScreenState extends State<PanelScreen> {
         ),
       );
     }
+
+  }
+
+  ui.IncidentCardData _cardData(
+    IncidenciaDetalle inc,
+    IncidenciasColors colors,
+  ) {
+    return ui.IncidentCardData(
+      id: inc.id,
+      title: '#${inc.id} ${inc.descripcion}',
+      details: '${inc.aulaNombre} • ${inc.equipoCodigo} (${inc.equipoTipo})',
+      priority: _toUiPriority(inc.prioridad),
+      status: inc.estado.value,
+      priorityColor: colors.colorParaPrioridad(inc.prioridad),
+      statusColor: colors.colorParaEstado(inc.estado),
+    );
+  }
+
+  ui.Priority _toUiPriority(Prioridad priority) {
+    return switch (priority) {
+      Prioridad.baja => ui.Priority.low,
+      Prioridad.media => ui.Priority.medium,
+      Prioridad.alta => ui.Priority.high,
+      Prioridad.urgente => ui.Priority.urgent,
+    };
   }
 
   @override
@@ -310,45 +337,19 @@ class _PanelScreenState extends State<PanelScreen> {
                     )
                   else
                     ...incidencias.take(3).map((inc) {
-                      final esCerrada = inc.estado == Estado.cerrada;
-                      final colorPrioridad = incidenciasColors.colorParaPrioridad(inc.prioridad);
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: colorPrioridad.withValues(alpha: 0.15),
-                            child: Icon(Icons.report_problem, color: colorPrioridad, size: 20),
-                          ),
-                          title: Text(
-                            '#${inc.id} ${inc.descripcion}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            '${inc.aulaNombre} • ${inc.equipoCodigo} (${inc.estado.value})',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          trailing: esCerrada
-                              ? const Chip(
-                                  label: Text('Cerrada', style: TextStyle(fontSize: 11)),
-                                  visualDensity: VisualDensity.compact,
-                                )
-                              : TextButton.icon(
-                                  key: Key('btn_cerrar_${inc.id}'),
-                                  onPressed: () => _cerrarIncidenciaRapida(inc.id),
-                                  icon: const Icon(Icons.check, size: 16),
-                                  label: const Text('Cerrar'),
-                                  style: TextButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                ),
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.incidenciaDetalle,
-                            arguments: inc.id,
-                          ),
+                      return ui.IncidentCard(
+                        incident: _cardData(inc, incidenciasColors),
+                        showClose: inc.estado != Estado.cerrada,
+                        onClose: (data) => _cerrarIncidenciaRapida(data.id),
+                        onComment: (data) => Navigator.pushNamed(
+                          context,
+                          AppRoutes.incidenciaDetalle,
+                          arguments: data.id,
+                        ),
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.incidenciaDetalle,
+                          arguments: inc.id,
                         ),
                       );
                     }),

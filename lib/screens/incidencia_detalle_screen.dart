@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:incidencias_ui/incidencias_ui.dart' as ui;
+
 import '../controllers/incidencias_controller.dart';
 import '../models/comentario.dart';
 import '../models/estado.dart';
@@ -31,7 +33,8 @@ class IncidenciaDetalleScreen extends StatefulWidget {
   });
 
   @override
-  State<IncidenciaDetalleScreen> createState() => IncidenciaDetalleScreenState();
+  State<IncidenciaDetalleScreen> createState() =>
+      IncidenciaDetalleScreenState();
 }
 
 class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
@@ -51,10 +54,9 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
     _controller = widget.incidenciasController;
 
     // Obtener datos iniciales de forma síncrona si existen en memoria o fallback
-    final enMemoria = _controller?.incidencias.cast<IncidenciaDetalle?>().firstWhere(
-      (i) => i?.id == widget.incidenciaId,
-      orElse: () => null,
-    );
+    final enMemoria = _controller?.incidencias
+        .cast<IncidenciaDetalle?>()
+        .firstWhere((i) => i?.id == widget.incidenciaId, orElse: () => null);
 
     _detalle = enMemoria ?? _generarFallback(widget.incidenciaId);
 
@@ -67,8 +69,12 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
   /// Carga la información de la incidencia con JOIN doble y sus comentarios
   Future<void> _cargarDatos() async {
     try {
-      final detalle = await _incidenciaRepo.getIncidenciaConDetalleById(widget.incidenciaId);
-      final comentarios = await _comentarioRepo.getByIncidencia(widget.incidenciaId);
+      final detalle = await _incidenciaRepo.getIncidenciaConDetalleById(
+        widget.incidenciaId,
+      );
+      final comentarios = await _comentarioRepo.getByIncidencia(
+        widget.incidenciaId,
+      );
 
       if (mounted) {
         setState(() {
@@ -100,6 +106,45 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
     );
   }
 
+  Future<void> _cambiarPrioridad(Prioridad prioridad) async {
+    final detalle = _detalle;
+    if (detalle == null || detalle.prioridad == prioridad) return;
+
+    final actualizado = detalle.copyWith(prioridad: prioridad);
+    try {
+      if (_controller != null) {
+        final success = await _controller!.cambiarPrioridad(
+          detalle.id,
+          prioridad,
+        );
+        if (!success) return;
+      } else {
+        final existente = await _incidenciaRepo.getById(detalle.id);
+        if (existente == null) return;
+        await _incidenciaRepo.update(existente.copyWith(prioridad: prioridad));
+      }
+      if (!mounted) return;
+      setState(() => _detalle = actualizado);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Prioridad cambiada a ${prioridad.value}.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo cambiar la prioridad: $error')),
+      );
+    }
+  }
+
+  ui.Priority _toUiPriority(Prioridad priority) {
+    return switch (priority) {
+      Prioridad.baja => ui.Priority.low,
+      Prioridad.media => ui.Priority.medium,
+      Prioridad.alta => ui.Priority.high,
+      Prioridad.urgente => ui.Priority.urgent,
+    };
+  }
+
   /// Ejecuta el cierre de la incidencia, actualiza el estado y persiste en SQLite
   Future<bool> cerrarIncidenciaDirecto() async {
     if (mounted) {
@@ -112,7 +157,9 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
       // 1. Persistir cambio de estado en SQLite
       final existente = await _incidenciaRepo.getById(widget.incidenciaId);
       if (existente != null) {
-        await _incidenciaRepo.update(existente.copyWith(estado: Estado.cerrada));
+        await _incidenciaRepo.update(
+          existente.copyWith(estado: Estado.cerrada),
+        );
       }
 
       // 2. Sincronizar controlador MVC y métricas si está disponible
@@ -121,11 +168,13 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
       }
 
       // 3. Insertar automáticamente un comentario de cierre para auditoría
-      await _comentarioRepo.create(Comentario(
-        incidenciaId: widget.incidenciaId,
-        fecha: DateTime.now(),
-        texto: 'Incidencia cerrada y verificada por el servicio técnico.',
-      ));
+      await _comentarioRepo.create(
+        Comentario(
+          incidenciaId: widget.incidenciaId,
+          fecha: DateTime.now(),
+          texto: 'Incidencia cerrada y verificada por el servicio técnico.',
+        ),
+      );
 
       await _cargarDatos();
       return true;
@@ -172,7 +221,9 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
             children: [
               const Icon(Icons.check_circle, color: Colors.white, size: 20),
               const SizedBox(width: 8),
-              Text('Incidencia #${widget.incidenciaId} cerrada y guardada en SQLite'),
+              Text(
+                'Incidencia #${widget.incidenciaId} cerrada y guardada en SQLite',
+              ),
             ],
           ),
           backgroundColor: Colors.green.shade700,
@@ -311,7 +362,8 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
+    final incidenciasColors =
+        theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     return Scaffold(
       appBar: AppBar(
@@ -370,7 +422,9 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -399,29 +453,29 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
                     children: [
                       Text(
                         'Incidencia #${inc.id}',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
                         'Registrada: ${_formatearFecha(inc.fecha)}',
-                        style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.outline,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 // Chips de Prioridad y Estado
-                Chip(
-                  avatar: CircleAvatar(radius: 4, backgroundColor: colorPrioridad),
-                  label: Text(
-                    inc.prioridad.value.toUpperCase(),
-                    style: TextStyle(
-                      color: colorPrioridad,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
-                  backgroundColor: colorPrioridad.withValues(alpha: 0.12),
-                  side: BorderSide(color: colorPrioridad.withValues(alpha: 0.4)),
-                  visualDensity: VisualDensity.compact,
+                ui.PriorityBadge(
+                  priority: _toUiPriority(inc.prioridad),
+                  semanticLabel: 'Cambiar prioridad de incidencia ${inc.id}',
+                  onChanged: (priority) => _cambiarPrioridad(switch (priority) {
+                    ui.Priority.low => Prioridad.baja,
+                    ui.Priority.medium => Prioridad.media,
+                    ui.Priority.high => Prioridad.alta,
+                    ui.Priority.urgent => Prioridad.urgente,
+                  }),
                 ),
                 const SizedBox(width: 6),
                 Chip(
@@ -448,9 +502,13 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,29 +562,43 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
                     decoration: BoxDecoration(
                       color: colorScheme.surface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.computer, size: 18, color: colorScheme.secondary),
+                            Icon(
+                              Icons.computer,
+                              size: 18,
+                              color: colorScheme.secondary,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               'Equipo afectado',
-                              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'Código: ${inc.equipoCodigo}',
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         Text(
                           'Tipo: ${inc.equipoTipo}',
-                          style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.outline,
+                          ),
                         ),
                       ],
                     ),
@@ -540,31 +612,45 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
                     decoration: BoxDecoration(
                       color: colorScheme.surface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.meeting_room, size: 18, color: colorScheme.tertiary),
+                            Icon(
+                              Icons.meeting_room,
+                              size: 18,
+                              color: colorScheme.tertiary,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               'Ubicación / Aula',
-                              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 6),
                         Text(
                           inc.aulaNombre,
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'Planta ${inc.aulaPlanta}',
-                          style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.outline,
+                          ),
                         ),
                       ],
                     ),
@@ -602,8 +688,15 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
                   ? OutlinedButton.icon(
                       key: const Key('btn_incidencia_ya_cerrada'),
                       onPressed: null,
-                      icon: const Icon(Icons.lock, size: 18, color: Colors.green),
-                      label: const Text('Cerrada', style: TextStyle(color: Colors.green)),
+                      icon: const Icon(
+                        Icons.lock,
+                        size: 18,
+                        color: Colors.green,
+                      ),
+                      label: const Text(
+                        'Cerrada',
+                        style: TextStyle(color: Colors.green),
+                      ),
                     )
                   : FilledButton.icon(
                       key: const Key('btn_cerrar_incidencia'),
@@ -638,7 +731,9 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -651,11 +746,16 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
                 const SizedBox(width: 8),
                 Text(
                   'Comentarios de Seguimiento',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
@@ -676,24 +776,39 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
             if (_comentarios.isEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.2,
+                  ),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.chat_bubble_outline, size: 36, color: colorScheme.outline),
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 36,
+                      color: colorScheme.outline,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'No hay comentarios registrados todavía.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.outline),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.outline,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Usa el botón "Añadir Comentario" para registrar intervenciones.',
-                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.outline),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.outline,
+                      ),
                     ),
                   ],
                 ),
@@ -706,7 +821,12 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final comentario = _comentarios[index];
-                  return _buildComentarioTile(context, comentario, theme, colorScheme);
+                  return _buildComentarioTile(
+                    context,
+                    comentario,
+                    theme,
+                    colorScheme,
+                  );
                 },
               ),
           ],
@@ -728,7 +848,9 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -743,14 +865,18 @@ class IncidenciaDetalleScreenState extends State<IncidenciaDetalleScreen> {
               const SizedBox(width: 8),
               Text(
                 'Técnico de soporte',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const Spacer(),
               Icon(Icons.access_time, size: 12, color: colorScheme.outline),
               const SizedBox(width: 4),
               Text(
                 _formatearFecha(comentario.fecha),
-                style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.outline),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.outline,
+                ),
               ),
             ],
           ),

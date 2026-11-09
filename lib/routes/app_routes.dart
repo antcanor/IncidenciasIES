@@ -21,6 +21,7 @@ class AppRoutes {
   static const String nuevoEquipo = '/equipos/nuevo';
   static const String ajustes = '/ajustes';
   static const String arView = '/ar';
+  static const String gestureCamera = '/camara-gesto';
 
   static IncidenciasController? defaultIncidenciasController;
   static AulasController? defaultAulasController;
@@ -92,6 +93,12 @@ class AppRoutes {
             equipoId: equipoId,
             equipoLabel: args?['equipoLabel'] as String?,
           ),
+          settings: settings,
+        );
+
+      case gestureCamera:
+        return MaterialPageRoute(
+          builder: (_) => const GestureCameraScreen(),
           settings: settings,
         );
 

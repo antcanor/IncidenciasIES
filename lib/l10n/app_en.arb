@@ -1,0 +1,19 @@
+{
+  "@@locale": "en",
+  "settings": "Settings",
+  "permissions": "Permissions",
+  "camera": "Camera",
+  "microphone": "Microphone",
+  "request": "Request permission",
+  "granted": "Granted",
+  "denied": "Not granted",
+  "language": "Language",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "spanish": "Spanish",
+  "english": "English",
+  "permissionOnlyOnUse": "Permissions are requested only after pressing the button.",
+  "permissionUpdated": "Permission updated.",
+  "permissionError": "Could not check permission."
+}

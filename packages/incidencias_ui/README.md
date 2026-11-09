@@ -11,29 +11,46 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/to/develop-packages).
 -->
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+Componentes Flutter compartidos para la aplicación de incidencias del centro.
+La idea es tener en un mismo paquete las piezas que se reutilizan en varias
+pantallas y poder probarlas sin levantar toda la aplicación.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- `PriorityBadge`: etiqueta de prioridad editable o solo informativa.
+- `IncidentCard`: tarjeta con datos, estado y acciones de una incidencia.
+- `MaquetaArBadge`: marca visual para prototipos de la vista AR.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+El paquete se usa como dependencia local desde la aplicación principal:
+
+```yaml
+dependencies:
+  incidencias_ui:
+    path: packages/incidencias_ui
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+Ejemplo mínimo de una etiqueta:
 
 ```dart
-const like = 'sample';
+PriorityBadge(
+  priority: Priority.medium,
+  onChanged: (priority) {
+    // Actualizar la incidencia.
+  },
+)
 ```
 
-## Additional information
+## Documentación
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+La API pública está comentada en español y la documentación HTML generada se
+encuentra en [`../../docs/api`](../../docs/api). Para regenerarla desde la raíz
+del repositorio:
+
+```bash
+cd packages/incidencias_ui
+dart doc --validate-links --output=../../docs/api
+```

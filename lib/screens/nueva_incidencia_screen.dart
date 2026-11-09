@@ -433,258 +433,267 @@ class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
         ],
       ),
       // REFACTOR: Wrap with Form para validación y estado reactivo
-      body: Form(
-        key: _formKey,
-        // REFACTOR: Wrap with SingleChildScrollView para evitar overflow al abrir teclado
-        child: SingleChildScrollView(
-          // REFACTOR: Wrap with Padding para alineación coherente del tema
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Formulario de Incidencia',
-                style: theme.textTheme.titleMedium,
-              ),
-              if (widget.equipoId != null) ...[
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Equipo asignado previamente: #${widget.equipoId}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSecondaryContainer,
+      body: SafeArea(
+        top: false,
+        child: Form(
+          key: _formKey,
+          // REFACTOR: Wrap with SingleChildScrollView para evitar overflow al abrir teclado
+          child: SingleChildScrollView(
+            // REFACTOR: Wrap with Padding para alineación coherente del tema
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Formulario de Incidencia',
+                  style: theme.textTheme.titleMedium,
+                ),
+                if (widget.equipoId != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Equipo asignado previamente: #${widget.equipoId}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSecondaryContainer,
+                      ),
                     ),
                   ),
+                ],
+                const SizedBox(height: 16),
+
+                // PASO 1 & 2: Selector dinámico de Aula y Equipo
+                UbicacionSelectorWidget(
+                  aulasCtrl: _aulasCtrl,
+                  equiposCtrl: _equiposCtrl,
+                  selectedAulaId: _selectedAulaId,
+                  selectedEquipoId: _selectedEquipoId,
+                  onAulaChanged: (newAulaId) {
+                    setState(() {
+                      _selectedAulaId = newAulaId;
+                      _selectedEquipoId = null;
+                    });
+                  },
+                  onEquipoChanged: (newEqId) {
+                    setState(() => _selectedEquipoId = newEqId);
+                  },
                 ),
-              ],
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // PASO 1 & 2: Selector dinámico de Aula y Equipo
-              UbicacionSelectorWidget(
-                aulasCtrl: _aulasCtrl,
-                equiposCtrl: _equiposCtrl,
-                selectedAulaId: _selectedAulaId,
-                selectedEquipoId: _selectedEquipoId,
-                onAulaChanged: (newAulaId) {
-                  setState(() {
-                    _selectedAulaId = newAulaId;
-                    _selectedEquipoId = null;
-                  });
-                },
-                onEquipoChanged: (newEqId) {
-                  setState(() => _selectedEquipoId = newEqId);
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // PASO 3: Campo de descripción con validación y botón de dictado por voz
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.edit_note_outlined,
-                                size: 20,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Descripción de la Avería',
-                                style: theme.textTheme.titleSmall,
-                              ),
-                            ],
-                          ),
-                          // Botón de dictado por voz (se conecta luego con la voz)
-                          FilledButton.tonalIcon(
-                            key: const Key('btn_dictado_voz'),
-                            onPressed: activarDictadoVoz,
-                            icon: Icon(
-                              _isListening ? Icons.stop : Icons.mic,
-                              size: 18,
-                            ),
-                            label: Text(
-                              _isListening ? 'Escuchando...' : 'Dictar por voz',
-                            ),
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        key: const Key('btn_orden_voz'),
-                        onPressed: activarOrdenVoz,
-                        icon: Icon(
-                          _isCommandListening
-                              ? Icons.stop
-                              : Icons.record_voice_over,
-                        ),
-                        label: Text(
-                          _isCommandListening
-                              ? 'Escuchando orden...'
-                              : 'Orden por voz',
-                        ),
-                      ),
-                      if (_isCommandListening)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: Text(
-                            'Di: «Cierra la incidencia del proyector del aula 12» o «Cuántas incidencias abiertas hay».',
-                            key: Key('estado_orden_voz'),
-                          ),
-                        ),
-                      OutlinedButton.icon(
-                        key: const Key('btn_sacudida_urgente'),
-                        onPressed: crearIncidenciaPorSacudida,
-                        icon: const Icon(Icons.vibration),
-                        label: const Text('Simular sacudida: crear urgente'),
-                      ),
-                      if (_isListening || _speechError != null) ...[
-                        const SizedBox(height: 8),
+                // PASO 3: Campo de descripción con validación y botón de dictado por voz
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(
-                              _isListening
-                                  ? Icons.graphic_eq
-                                  : Icons.info_outline,
-                              size: 18,
-                              color: _isListening
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.error,
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.edit_note_outlined,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Descripción de la Avería',
+                                  style: theme.textTheme.titleSmall,
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
+                            // Botón de dictado por voz (se conecta luego con la voz)
+                            FilledButton.tonalIcon(
+                              key: const Key('btn_dictado_voz'),
+                              onPressed: activarDictadoVoz,
+                              icon: Icon(
+                                _isListening ? Icons.stop : Icons.mic,
+                                size: 18,
+                              ),
+                              label: Text(
                                 _isListening
-                                    ? 'Escuchando... habla ahora. Pulsa de nuevo para detener.'
-                                    : _speechError!,
-                                key: const Key('estado_dictado_voz'),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: _isListening
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.error,
+                                    ? 'Escuchando...'
+                                    : 'Dictar por voz',
+                              ),
+                              style: FilledButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ],
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: const Key('input_descripcion'),
-                        controller: _descripcionCtrl,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          labelText: 'Descripción de la avería *',
-                          hintText: 'Detalla el problema (p. ej. pantalla azul, no enciende, tecla rota...)',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.description),
-                          suffixIcon: Tooltip(
-                            message: _isListening
-                                ? 'Detener dictado'
-                                : 'Dictar descripción por voz',
-                            child: IconButton(
-                              key: const Key('btn_dictado_voz_suffix'),
-                              icon: Icon(_isListening ? Icons.stop : Icons.mic),
-                              onPressed: activarDictadoVoz,
-                            ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          key: const Key('btn_orden_voz'),
+                          onPressed: activarOrdenVoz,
+                          icon: Icon(
+                            _isCommandListening
+                                ? Icons.stop
+                                : Icons.record_voice_over,
+                          ),
+                          label: Text(
+                            _isCommandListening
+                                ? 'Escuchando orden...'
+                                : 'Orden por voz',
                           ),
                         ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Debes introducir una descripción de la avería.';
-                          }
-                          if (value.trim().length < 5) {
-                            return 'La descripción debe tener al menos 5 caracteres.';
-                          }
-                          return null;
-                        },
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ],
+                        if (_isCommandListening)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Di: «Cierra la incidencia del proyector del aula 12» o «Cuántas incidencias abiertas hay».',
+                              key: Key('estado_orden_voz'),
+                            ),
+                          ),
+                        OutlinedButton.icon(
+                          key: const Key('btn_sacudida_urgente'),
+                          onPressed: crearIncidenciaPorSacudida,
+                          icon: const Icon(Icons.vibration),
+                          label: const Text('Simular sacudida: crear urgente'),
+                        ),
+                        if (_isListening || _speechError != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                _isListening
+                                    ? Icons.graphic_eq
+                                    : Icons.info_outline,
+                                size: 18,
+                                color: _isListening
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _isListening
+                                      ? 'Escuchando... habla ahora. Pulsa de nuevo para detener.'
+                                      : _speechError!,
+                                  key: const Key('estado_dictado_voz'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: _isListening
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('input_descripcion'),
+                          controller: _descripcionCtrl,
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            labelText: 'Descripción de la avería *',
+                            hintText: 'Detalla el problema (p. ej. pantalla azul, no enciende, tecla rota...)',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.description),
+                            suffixIcon: Tooltip(
+                              message: _isListening
+                                  ? 'Detener dictado'
+                                  : 'Dictar descripción por voz',
+                              child: IconButton(
+                                key: const Key('btn_dictado_voz_suffix'),
+                                icon: Icon(
+                                  _isListening ? Icons.stop : Icons.mic,
+                                ),
+                                onPressed: activarDictadoVoz,
+                              ),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Debes introducir una descripción de la avería.';
+                            }
+                            if (value.trim().length < 5) {
+                              return 'La descripción debe tener al menos 5 caracteres.';
+                            }
+                            return null;
+                          },
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // PASO 4: Selector de Prioridad con Chips semánticos
-              PrioridadChipsSelector(
-                prioridadSeleccionada: _selectedPrioridad,
-                onPrioridadChanged: (p) =>
-                    setState(() => _selectedPrioridad = p),
-              ),
-              const SizedBox(height: 16),
+                // PASO 4: Selector de Prioridad con Chips semánticos
+                PrioridadChipsSelector(
+                  prioridadSeleccionada: _selectedPrioridad,
+                  onPrioridadChanged: (p) =>
+                      setState(() => _selectedPrioridad = p),
+                ),
+                const SizedBox(height: 16),
 
-              // Previsualización reactiva del Ticket en tiempo real
-              LiveTicketPreviewCard(
-                aulaNombre:
-                    _aulasCtrl.aulas
-                        .where((a) => a.id == _selectedAulaId)
-                        .map((a) => a.nombre)
-                        .firstOrNull ??
-                    'Aula no seleccionada',
-                equipoCodigo:
-                    _equiposCtrl.equipos
-                        .where((e) => e.id == _selectedEquipoId)
-                        .map((e) => '${e.codigo} (${e.tipo})')
-                        .firstOrNull ??
-                    'Equipo no seleccionado',
-                descripcion: _descripcionCtrl.text.isEmpty
-                    ? 'Sin descripción introducida'
-                    : _descripcionCtrl.text,
-                prioridad: _selectedPrioridad,
-                estado: _selectedEstado,
-              ),
-              const SizedBox(height: 24),
+                // Previsualización reactiva del Ticket en tiempo real
+                LiveTicketPreviewCard(
+                  aulaNombre:
+                      _aulasCtrl.aulas
+                          .where((a) => a.id == _selectedAulaId)
+                          .map((a) => a.nombre)
+                          .firstOrNull ??
+                      'Aula no seleccionada',
+                  equipoCodigo:
+                      _equiposCtrl.equipos
+                          .where((e) => e.id == _selectedEquipoId)
+                          .map((e) => '${e.codigo} (${e.tipo})')
+                          .firstOrNull ??
+                      'Equipo no seleccionado',
+                  descripcion: _descripcionCtrl.text.isEmpty
+                      ? 'Sin descripción introducida'
+                      : _descripcionCtrl.text,
+                  prioridad: _selectedPrioridad,
+                  estado: _selectedEstado,
+                ),
+                const SizedBox(height: 24),
 
-              // Botones de Acción
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      key: const Key('btn_cancelar_incidencia'),
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar y Volver'),
+                // Botones de Acción
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        key: const Key('btn_cancelar_incidencia'),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar y Volver'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      key: const Key('btn_guardar_incidencia'),
-                      onPressed: _isSaving ? null : guardarIncidencia,
-                      icon: _isSaving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.save),
-                      label: const Text('Guardar Incidencia'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: const Key('btn_guardar_incidencia'),
+                        onPressed: _isSaving ? null : guardarIncidencia,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.save),
+                        label: const Text('Guardar Incidencia'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

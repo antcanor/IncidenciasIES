@@ -6,6 +6,7 @@ export 'incidencia_detalle_screen.dart';
 export 'incidencias_list_screen.dart';
 export 'historial_screen.dart';
 export 'ar_view_screen.dart';
+export 'gesture_camera_screen.dart';
 export 'ajustes_screen.dart';
 export 'nueva_aula_screen.dart';
 export 'nueva_incidencia_screen.dart';

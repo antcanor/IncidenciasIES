@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="incidencias_ui API docs, for the Dart programming language.">
+  <title>incidencias_ui - Dart API docs</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="static-assets/github.css?v1">
+  <link rel="stylesheet" href="static-assets/styles.css?v1">
+  <link rel="icon" href="static-assets/favicon.png?v1">
+  
+</head>
+
+<body data-base-href="" data-using-base-href="false" class="light-theme">
+<div id="overlay-under-drawer"></div>
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li class="self-crumb">incidencias_ui package</li>
+  </ol>
+  <div class="self-name">incidencias_ui</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <button class="toggle" id="theme-button" title="Toggle between light and dark mode" aria-label="Light and dark mode toggle">
+    <span id="dark-theme-button" class="material-symbols-outlined" aria-hidden="true">
+      dark_mode
+    </span>
+    <span id="light-theme-button" class="material-symbols-outlined" aria-hidden="true">
+      light_mode
+    </span>
+  </button>
+</header>
+<main>
+  <div id="dartdoc-main-content" class="main-content">
+      
+<section class="desc markdown">
+  <!--
+This README describes the package. If you publish this package to pub.dev,
+this README's contents appear on the landing page for your package.
+
+For information about how to write a good package README, see the guide for
+[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+
+For general information about developing packages, see the Dart guide for
+[creating packages](https://dart.dev/guides/libraries/create-packages)
+and the Flutter guide for
+[developing packages and plugins](https://flutter.dev/to/develop-packages).
+-->
+<p>Componentes Flutter compartidos para la aplicación de incidencias del centro.
+La idea es tener en un mismo paquete las piezas que se reutilizan en varias
+pantallas y poder probarlas sin levantar toda la aplicación.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li><code>PriorityBadge</code>: etiqueta de prioridad editable o solo informativa.</li>
+<li><code>IncidentCard</code>: tarjeta con datos, estado y acciones de una incidencia.</li>
+<li><code>MaquetaArBadge</code>: marca visual para prototipos de la vista AR.</li>
+</ul>
+<h2 id="getting-started">Getting started</h2>
+<p>El paquete se usa como dependencia local desde la aplicación principal:</p>
+<pre class="language-yaml"><code class="language-yaml">dependencies:
+  incidencias_ui:
+    path: packages/incidencias_ui
+</code></pre>
+<h2 id="usage">Usage</h2>
+<p>Ejemplo mínimo de una etiqueta:</p>
+<pre class="language-dart"><code class="language-dart">PriorityBadge(
+  priority: Priority.medium,
+  onChanged: (priority) {
+    // Actualizar la incidencia.
+  },
+)
+</code></pre>
+<h2 id="documentacin">Documentación</h2>
+<p>La API pública está comentada en español y la documentación HTML generada se
+encuentra en <a href="../../docs/api"><code>../../docs/api</code></a>. Para regenerarla desde la raíz
+del repositorio:</p>
+<pre class="language-bash"><code class="language-bash">cd packages/incidencias_ui
+dart doc --validate-links --output=../../docs/api
+</code></pre>
+</section>
+
+
+      <section class="summary">
+          <h2>Libraries</h2>
+        <dl>
+          <dt id="incidencias_ui">
+  <span class="name"><a href="incidencias_ui/">incidencias_ui</a></span> 
+
+</dt>
+<dd>Punto de entrada del paquete de componentes compartidos de incidencias.
+</dd>
+
+          <dt id="incident_card">
+  <span class="name"><a href="incident_card/">incident_card</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="priority_badge">
+  <span class="name"><a href="priority_badge/">priority_badge</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+        </dl>
+      </section>
+  </div> <!-- /.main-content -->
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <!-- The search input and breadcrumbs below are only responsively visible at low resolutions. -->
+<header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+    <li class="self-crumb">incidencias_ui package</li>
+</ol>
+
+    <h5 class="hidden-xs"><span class="package-name">incidencias_ui</span> <span class="package-kind">package</span></h5>
+    <ol>
+      <li class="section-title">Libraries</li>
+      <li><a href="incidencias_ui/">incidencias_ui</a></li>
+      <li><a href="incident_card/">incident_card</a></li>
+      <li><a href="priority_badge/">priority_badge</a></li>
+</ol>
+
+  </div>
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div>
+</main>
+<footer>
+  <span class="no-break">
+    incidencias_ui
+      0.0.1
+  </span>
+  
+</footer>
+
+
+<script src="static-assets/highlight.pack.js?v1"></script>
+<script src="static-assets/docs.dart.js"></script>
+
+</body>
+</html>
+

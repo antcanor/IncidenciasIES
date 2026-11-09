@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:incidencias_ies/controllers/controllers.dart';
 import 'package:incidencias_ies/database/database_helper.dart';
@@ -51,6 +52,46 @@ void main() {
     expect(find.text('Equipos y Aulas'), findsOneWidget);
     expect(find.text('Estado BD'), findsOneWidget);
     expect(find.text('Nueva Incidencia'), findsOneWidget);
+
+    incidenciasCtrl.dispose();
+    aulasCtrl.dispose();
+    equiposCtrl.dispose();
+    themeCtrl.dispose();
+  });
+
+  testWidgets('La pestaña Panel seleccionada es visible en modo oscuro', (
+    WidgetTester tester,
+  ) async {
+    final incidenciasCtrl = IncidenciasController();
+    final aulasCtrl = AulasController();
+    final equiposCtrl = EquiposController();
+    final themeCtrl = ThemeController(initialMode: ThemeMode.dark);
+
+    await tester.runAsync(() async {
+      await DatabaseHelper.instance.database;
+      await DatabaseSeeder().seedIfEmpty();
+
+      await Future.wait([
+        aulasCtrl.loadAulas(),
+        equiposCtrl.loadEquipos(),
+        incidenciasCtrl.loadIncidencias(),
+      ]);
+    });
+
+    await tester.pumpWidget(IncidenciasApp(
+      incidenciasCtrl: incidenciasCtrl,
+      aulasCtrl: aulasCtrl,
+      equiposCtrl: equiposCtrl,
+      themeController: themeCtrl,
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final panelContext = tester.element(find.text('Panel'));
+    expect(
+      DefaultTextStyle.of(panelContext).style.color,
+      AppTheme.darkColorScheme.primary,
+    );
 
     incidenciasCtrl.dispose();
     aulasCtrl.dispose();

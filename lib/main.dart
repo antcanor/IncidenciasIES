@@ -209,7 +209,9 @@ class _HomeScreenState extends State<HomeScreen> {
           bottom: TabBar(
             isScrollable: true,
             indicatorColor: colorScheme.primary,
-            labelColor: colorScheme.onPrimary,
+            labelColor: colorScheme.brightness == Brightness.dark
+                ? colorScheme.primary
+                : colorScheme.onPrimary,
             tabs: const [
               Tab(icon: Icon(Icons.dashboard), text: 'Panel'),
               Tab(icon: Icon(Icons.alt_route), text: 'Incidencias (JOIN)'),

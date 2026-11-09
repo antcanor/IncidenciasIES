@@ -158,59 +158,81 @@ class _HistorialScreenState extends State<HistorialScreen> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int?>(
-                    initialValue: _aulaId,
-                    decoration: const InputDecoration(
-                      labelText: 'Aula',
-                      border: OutlineInputBorder(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final aulaFilter = DropdownButtonFormField<int?>(
+                  initialValue: _aulaId,
+                  decoration: const InputDecoration(
+                    labelText: 'Aula',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Todas las aulas'),
                     ),
-                    items: [
-                      const DropdownMenuItem<int?>(
-                        value: null,
-                        child: Text('Todas las aulas'),
-                      ),
-                      ..._aulas
-                          .where((aula) => aula.id != null)
-                          .map(
-                            (aula) => DropdownMenuItem<int?>(
-                              value: aula.id,
-                              child: Text(aula.nombre),
-                            ),
+                    ..._aulas
+                        .where((aula) => aula.id != null)
+                        .map(
+                          (aula) => DropdownMenuItem<int?>(
+                            value: aula.id,
+                            child: Text(aula.nombre),
                           ),
+                        ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _aulaId = value);
+                    _load();
+                  },
+                );
+                final dateFilter = OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(
+                    _fecha == null
+                        ? 'Cualquier fecha'
+                        : '${_fecha!.day.toString().padLeft(2, '0')}/${_fecha!.month.toString().padLeft(2, '0')}/${_fecha!.year}',
+                  ),
+                  onPressed: _selectDate,
+                );
+                final clearDate = _fecha == null
+                    ? null
+                    : IconButton(
+                        tooltip: 'Quitar fecha',
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() => _fecha = null);
+                          _load();
+                        },
+                      );
+
+                if (constraints.maxWidth < 500) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      aulaFilter,
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: dateFilter),
+                          ?clearDate,
+                        ],
+                      ),
                     ],
-                    onChanged: (value) {
-                      setState(() => _aulaId = value);
-                      _load();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(
-                      _fecha == null
-                          ? 'Cualquier fecha'
-                          : '${_fecha!.day.toString().padLeft(2, '0')}/${_fecha!.month.toString().padLeft(2, '0')}/${_fecha!.year}',
-                    ),
-                    onPressed: _selectDate,
-                  ),
-                ),
-                if (_fecha != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Quitar fecha',
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      setState(() => _fecha = null);
-                      _load();
-                    },
-                  ),
-                ],
-              ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: aulaFilter),
+                    const SizedBox(width: 8),
+                    Expanded(child: dateFilter),
+                    if (clearDate != null) ...[
+                      const SizedBox(width: 8),
+                      clearDate,
+                    ],
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 8),

@@ -21,3 +21,17 @@ La aplicación consume el paquete Flutter local `packages/incidencias_ui`
 mediante una dependencia `path:` en `pubspec.yaml`. El widget
 `MaquetaArBadge` demuestra que la aplicación importa y utiliza componentes del
 paquete sin depender de una publicación externa.
+
+## Catálogo de componentes
+
+El catálogo Widgetbook de `PriorityBadge` e `IncidentCard` está disponible en
+[`tool/widgetbook.dart`](tool/widgetbook.dart). Incluye todas las prioridades,
+las variantes con y sin comentario y los temas claro y oscuro. La valoración de
+las herramientas consideradas está documentada en
+[`docs/widgetbook-evaluacion.md`](docs/widgetbook-evaluacion.md).
+
+Para ejecutarlo:
+
+```bash
+flutter run -d chrome -t tool/widgetbook.dart
+```

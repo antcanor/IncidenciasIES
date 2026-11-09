@@ -33,6 +33,37 @@ void main() {
     expect(selected, Priority.urgent);
   });
 
+  testWidgets(
+    'representa las opciones compacta, personalizada y deshabilitada',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PriorityBadge(
+              priority: Priority.low,
+              compact: false,
+              enabled: false,
+              semanticLabel: 'Prioridad baja',
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('BAJA'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(PriorityBadge)),
+        matchesSemantics(
+          label: 'Prioridad baja',
+          isButton: false,
+          hasExpandedState: true,
+        ),
+      );
+      await tester.tap(find.byType(PriorityBadge));
+      expect(find.text('URGENTE'), findsNothing);
+    },
+  );
+
   testWidgets('emite eventos tipados de cierre y comentario', (tester) async {
     IncidentCardData? closed;
     IncidentCardData? commented;

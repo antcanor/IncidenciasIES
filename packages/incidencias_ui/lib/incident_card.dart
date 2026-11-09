@@ -2,17 +2,56 @@ import 'package:flutter/material.dart';
 
 import 'priority_badge.dart';
 
+/// Callback que recibe los datos de la incidencia afectada por una acción.
+///
+/// Por ejemplo, se puede usar para cerrar la incidencia:
+///
+/// ```dart
+/// IncidentCardCallback cerrar = (incident) {
+///   print('Cerrando ${incident.id}');
+/// };
+/// ```
 typedef IncidentCardCallback = void Function(IncidentCardData incident);
 
+/// Datos necesarios para pintar una [IncidentCard].
+///
+/// Los colores se reciben desde fuera para que la aplicación pueda aplicar su
+/// propio tema o sus colores corporativos.
 class IncidentCardData {
+  /// Identificador de la incidencia.
   final int id;
+
+  /// Título breve que aparece en la tarjeta.
   final String title;
+
+  /// Información secundaria, como el aula y el código del equipo.
   final String details;
+
+  /// Prioridad actual de la incidencia.
   final Priority priority;
+
+  /// Estado que se muestra junto a la prioridad.
   final String status;
+
+  /// Color de la etiqueta de prioridad y del icono principal.
   final Color priorityColor;
+
+  /// Color de la etiqueta del estado.
   final Color statusColor;
 
+  /// Crea los datos visuales de una incidencia.
+  ///
+  /// ```dart
+  /// const data = IncidentCardData(
+  ///   id: 12,
+  ///   title: 'Monitor sin señal',
+  ///   details: 'Aula 101 · PC-101-02',
+  ///   priority: Priority.medium,
+  ///   status: 'ABIERTA',
+  ///   priorityColor: Colors.amber,
+  ///   statusColor: Colors.red,
+  /// );
+  /// ```
   const IncidentCardData({
     required this.id,
     required this.title,
@@ -24,17 +63,52 @@ class IncidentCardData {
   });
 }
 
+/// Tarjeta reutilizable para mostrar una incidencia y sus acciones principales.
+///
+/// La tarjeta puede mostrar botones para comentar y cerrar, y opcionalmente
+/// permite cambiar la prioridad con [PriorityBadge]. Ejemplo:
+///
+/// ```dart
+/// IncidentCard(
+///   incident: data,
+///   onClose: (incident) => cerrarIncidencia(incident.id),
+///   onComment: (incident) => abrirComentarios(incident.id),
+///   showComment: true,
+/// )
+/// ```
 class IncidentCard extends StatelessWidget {
+  /// Datos de la incidencia que se va a mostrar.
   final IncidentCardData incident;
+
+  /// Acción que se ejecuta al pulsar «Cerrar».
   final IncidentCardCallback onClose;
+
+  /// Acción que se ejecuta al pulsar el botón de comentario.
   final IncidentCardCallback onComment;
+
+  /// Callback opcional para activar el cambio de prioridad.
+  ///
+  /// Si es `null`, la prioridad se muestra como una etiqueta fija.
   final ValueChanged<Priority>? onPriorityChanged;
+
+  /// Acción opcional al pulsar el cuerpo de la tarjeta.
   final VoidCallback? onTap;
+
+  /// Widget opcional que sustituye al icono de incidencia de la izquierda.
   final Widget? leading;
+
+  /// Widget opcional que aparece al final de la tarjeta.
   final Widget? trailing;
+
+  /// Indica si se muestra la acción para cerrar.
   final bool showClose;
+
+  /// Indica si se muestra la acción para añadir comentarios.
   final bool showComment;
 
+  /// Crea una tarjeta de incidencia.
+  ///
+  /// Debe quedar al menos una acción visible: [showClose] o [showComment].
   const IncidentCard({
     super.key,
     required this.incident,

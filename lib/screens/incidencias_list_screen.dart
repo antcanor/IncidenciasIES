@@ -136,7 +136,7 @@ class _IncidenciasListScreenState extends State<IncidenciasListScreen> {
   }
 
   void _irANuevaIncidencia() {
-    Navigator.pushNamed(context, AppRoutes.nuevaIncidencia).then((_) {
+    Navigator.pushNamed(context, AppRoutes.nuevaIncidencia, arguments: _controller).then((_) {
       if (mounted) _controller.loadIncidencias();
     });
   }

@@ -1,21 +1,35 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+
 import '../controllers/controllers.dart';
 import '../models/models.dart';
+import '../services/services.dart';
 import '../theme/theme.dart';
 import 'prototipo/export_visual_incidencia.dart';
 
 /// =============================================================================
-/// PANTALLA REFACTORIZADA MANUALMENTE (RA1.b, c, e, f)
-/// Prototipo adaptado desde editor visual aplicando:
-/// - Wrap with Form, Wrap with SingleChildScrollView, Wrap with Padding, Wrap with Card.
-/// - Extract Widget: UbicacionSelectorWidget, PrioridadChipsSelector, LiveTicketPreviewCard.
-/// - Conexión MVC y persistencia real en SQLite.
+/// PANTALLA 4: NUEVA INCIDENCIA (FORMULARIO CON VALIDACIÓN Y DICTADO POR VOZ)
+/// - Flujo guiado: Aula → Equipo → Descripción → Prioridad
+/// - Validación de formulario con mensajes de error descriptivos.
+/// - Botón de dictado por voz (preparado para conectar con módulo STT).
+/// - Previsualización de ticket reactiva en tiempo real.
+/// - Persistencia real en SQLite y actualización automática de la lista.
 /// =============================================================================
 class NuevaIncidenciaScreen extends StatefulWidget {
   final int? equipoId;
   final IncidenciasController? incidenciasCtrl;
   final AulasController? aulasCtrl;
   final EquiposController? equiposCtrl;
+  final VoidCallback? onDictadoVoz;
+  final bool enableShakeDetection;
 
   const NuevaIncidenciaScreen({
     super.key,
@@ -23,13 +37,15 @@ class NuevaIncidenciaScreen extends StatefulWidget {
     this.incidenciasCtrl,
     this.aulasCtrl,
     this.equiposCtrl,
+    this.onDictadoVoz,
+    this.enableShakeDetection = true,
   });
 
   @override
-  State<NuevaIncidenciaScreen> createState() => _NuevaIncidenciaScreenState();
+  State<NuevaIncidenciaScreen> createState() => NuevaIncidenciaScreenState();
 }
 
-class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
+class NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _descripcionCtrl = TextEditingController();
 
@@ -42,6 +58,15 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
   Prioridad _selectedPrioridad = Prioridad.alta;
   final Estado _selectedEstado = Estado.abierta;
   bool _isSaving = false;
+  final SpeechToText _speech = SpeechToText();
+  final FlutterTts _tts = FlutterTts();
+  final VoiceCommandService _voiceCommandService = VoiceCommandService();
+  bool _speechAvailable = false;
+  bool _isListening = false;
+  bool _isCommandListening = false;
+  StreamSubscription<UserAccelerometerEvent>? _shakeSubscription;
+  DateTime? _lastShakeAt;
+  String? _speechError;
 
   @override
   void initState() {
@@ -52,6 +77,68 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
 
     _selectedEquipoId = widget.equipoId;
     _cargarDatos();
+    if (widget.enableShakeDetection) {
+      _suscribirSacudida();
+    }
+  }
+
+  void _suscribirSacudida() {
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return;
+    }
+    _shakeSubscription =
+        userAccelerometerEventStream(
+          samplingPeriod: SensorInterval.normalInterval,
+        ).listen(
+          (event) {
+            final magnitude = math.sqrt(
+              event.x * event.x + event.y * event.y + event.z * event.z,
+            );
+            final now = DateTime.now();
+            final cooldown =
+                _lastShakeAt == null ||
+                now.difference(_lastShakeAt!) > const Duration(seconds: 2);
+            if (magnitude >= 15 && cooldown && !_isSaving) {
+              _lastShakeAt = now;
+              unawaited(crearIncidenciaPorSacudida());
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!mounted) return;
+            setState(() {
+              _speechError =
+                  'El sensor de movimiento no está disponible: $error';
+            });
+          },
+        );
+  }
+
+  Future<void> _inicializarVoz() async {
+    try {
+      final available = await _speech.initialize(
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _isListening = false;
+            _isCommandListening = false;
+            _speechError = error.errorMsg;
+          });
+        },
+        onStatus: (status) {
+          if (!mounted) return;
+          setState(() => _isListening = status == 'listening');
+        },
+      );
+      if (mounted) setState(() => _speechAvailable = available);
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _speechError = 'No se pudo inicializar el dictado: $error',
+        );
+      }
+    }
   }
 
   Future<void> _cargarDatos() async {
@@ -62,21 +149,18 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
       if (!mounted) return;
 
       if (_selectedEquipoId != null) {
-        final match = _equiposCtrl.equipos.where((e) => e.id == _selectedEquipoId);
+        final match = _equiposCtrl.equipos.where(
+          (e) => e.id == _selectedEquipoId,
+        );
         if (match.isNotEmpty) {
           setState(() {
             _selectedAulaId = match.first.aulaId;
           });
+          return;
         }
-      } else if (_aulasCtrl.aulas.isNotEmpty && _selectedAulaId == null) {
-        setState(() {
-          _selectedAulaId = _aulasCtrl.aulas.first.id;
-          final eqList = _equiposCtrl.equipos.where((e) => e.aulaId == _selectedAulaId).toList();
-          if (eqList.isNotEmpty) {
-            _selectedEquipoId = eqList.first.id;
-          }
-        });
       }
+
+      setState(() {});
     } catch (_) {
       // Ignorar en tests de navegación sin BD
     }
@@ -84,17 +168,186 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
 
   @override
   void dispose() {
+    _shakeSubscription?.cancel();
+    unawaited(_detenerServiciosDeVoz());
     _descripcionCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _guardarIncidencia() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedEquipoId == null) {
+  Future<void> _detenerServiciosDeVoz() async {
+    try {
+      await _speech.stop();
+    } on MissingPluginException {
+      // El plugin no está registrado en los tests de escritorio.
+    }
+    try {
+      await _tts.stop();
+    } on MissingPluginException {
+      // El plugin no está registrado en los tests de escritorio.
+    }
+  }
+
+  Future<bool> crearIncidenciaPorSacudida() async {
+    if (_selectedEquipoId == null || _selectedAulaId == null) {
+      if (mounted) {
+        setState(() {
+          _selectedPrioridad = Prioridad.urgente;
+          _speechError =
+              'Selecciona un aula y un equipo antes de usar la sacudida.';
+        });
+      }
+      return false;
+    }
+
+    setState(() {
+      _selectedPrioridad = Prioridad.urgente;
+      if (_descripcionCtrl.text.trim().isEmpty) {
+        _descripcionCtrl.text = 'Incidencia urgente detectada por sacudida';
+      }
+    });
+    final saved = await guardarIncidencia();
+    if (saved && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecciona un equipo.')),
+        const SnackBar(
+          key: Key('snackbar_sacudida_guardada'),
+          content: Text('Incidencia urgente creada por sacudida.'),
+        ),
+      );
+    }
+    return saved;
+  }
+
+  Future<void> activarDictadoVoz() async {
+    if (widget.onDictadoVoz != null) {
+      widget.onDictadoVoz!();
+      return;
+    }
+
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    if (!_speechAvailable) {
+      await _inicializarVoz();
+    }
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      setState(
+        () => _speechError =
+            'El dictado por voz no está disponible en este dispositivo.',
       );
       return;
+    }
+    if (_isListening) {
+      await _speech.stop();
+      return;
+    }
+    setState(() => _speechError = null);
+    await _speech.listen(
+      onResult: _onSpeechResult,
+      listenOptions: SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: ListenMode.dictation,
+        localeId: isEnglish ? 'en_US' : 'es_ES',
+      ),
+    );
+    if (mounted) setState(() => _isListening = true);
+  }
+
+  Future<void> _onSpeechResult(SpeechRecognitionResult result) async {
+    if (result.recognizedWords.isNotEmpty) {
+      _descripcionCtrl
+        ..text = result.recognizedWords
+        ..selection = TextSelection.collapsed(
+          offset: result.recognizedWords.length,
+        );
+      if (mounted) setState(() {});
+    }
+    if (result.finalResult) {
+      if (mounted) setState(() => _isListening = false);
+      if (!mounted) return;
+      final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+      await _tts.setLanguage(isEnglish ? 'en-US' : 'es-ES');
+      await _tts.speak(
+        isEnglish ? 'Description dictated' : 'Descripción dictada',
+      );
+    }
+  }
+
+  Future<void> activarOrdenVoz() async {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    if (!_speechAvailable) {
+      await _inicializarVoz();
+    }
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      setState(
+        () => _speechError = 'El reconocimiento de órdenes no está disponible en este dispositivo.',
+      );
+      return;
+    }
+    if (_isCommandListening) {
+      await _speech.stop();
+      return;
+    }
+
+    setState(() {
+      _speechError = null;
+      _isCommandListening = true;
+    });
+    await _speech.listen(
+      onResult: _onVoiceCommandResult,
+      listenOptions: SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: ListenMode.dictation,
+        localeId: isEnglish ? 'en_US' : 'es_ES',
+      ),
+    );
+  }
+
+  Future<void> _onVoiceCommandResult(SpeechRecognitionResult result) async {
+    if (!result.finalResult || result.recognizedWords.trim().isEmpty) return;
+    if (mounted) setState(() => _isCommandListening = false);
+    await ejecutarOrdenVoz(result.recognizedWords);
+  }
+
+  Future<VoiceCommandResult> ejecutarOrdenVoz(String command) async {
+    final result = await _voiceCommandService.execute(command);
+    if (mounted) {
+      await _incidenciasCtrl.loadIncidencias();
+    }
+    final isEnglish =
+        mounted && Localizations.localeOf(context).languageCode == 'en';
+    await _tts.setLanguage(isEnglish ? 'en-US' : 'es-ES');
+    await _tts.speak(result.message);
+    if (mounted && !result.successful) {
+      setState(() => _speechError = result.message);
+    }
+    return result;
+  }
+
+  Future<bool> guardarIncidencia() async {
+    final bool isFormValid = _formKey.currentState?.validate() ?? false;
+    if (!isFormValid || _selectedEquipoId == null || _selectedAulaId == null) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          key: Key('snackbar_error_validacion'),
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Por favor, completa correctamente todos los campos obligatorios.',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
     }
 
     setState(() => _isSaving = true);
@@ -108,17 +361,44 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
         fecha: DateTime.now(),
       );
 
-      await _incidenciasCtrl.createIncidencia(nueva);
+      final creada = await _incidenciasCtrl.createIncidencia(nueva);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Incidencia guardada con éxito en la base de datos.'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        Navigator.pop(context, true);
+        if (creada != null) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              key: const Key('snackbar_incidencia_guardada'),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Incidencia #${creada.id ?? ""} guardada con éxito en la base de datos.',
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          Navigator.pop(context, true);
+          return true;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _incidenciasCtrl.errorMessage ??
+                    'Error al guardar la incidencia.',
+              ),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          return false;
+        }
       }
+      return false;
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -144,7 +424,9 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ExportVisualIncidenciaWidget()),
+                MaterialPageRoute(
+                  builder: (_) => const ExportVisualIncidenciaWidget(),
+                ),
               );
             },
           ),
@@ -160,24 +442,32 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Formulario de Incidencia', style: theme.textTheme.titleMedium),
+              Text(
+                'Formulario de Incidencia',
+                style: theme.textTheme.titleMedium,
+              ),
               if (widget.equipoId != null) ...[
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     'Equipo asignado previamente: #${widget.equipoId}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSecondaryContainer),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSecondaryContainer,
+                    ),
                   ),
                 ),
               ],
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 1: Selector dinámico de Aula y Equipo
+              // PASO 1 & 2: Selector dinámico de Aula y Equipo
               UbicacionSelectorWidget(
                 aulasCtrl: _aulasCtrl,
                 equiposCtrl: _equiposCtrl,
@@ -186,8 +476,7 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                 onAulaChanged: (newAulaId) {
                   setState(() {
                     _selectedAulaId = newAulaId;
-                    final eqList = _equiposCtrl.equipos.where((e) => e.aulaId == newAulaId).toList();
-                    _selectedEquipoId = eqList.isNotEmpty ? eqList.first.id : null;
+                    _selectedEquipoId = null;
                   });
                 },
                 onEquipoChanged: (newEqId) {
@@ -196,23 +485,130 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               ),
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 2: Campo de descripción con validación
+              // PASO 3: Campo de descripción con validación y botón de dictado por voz
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Descripción de la Avería', style: theme.textTheme.titleSmall),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.edit_note_outlined,
+                                size: 20,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Descripción de la Avería',
+                                style: theme.textTheme.titleSmall,
+                              ),
+                            ],
+                          ),
+                          // Botón de dictado por voz (se conecta luego con la voz)
+                          FilledButton.tonalIcon(
+                            key: const Key('btn_dictado_voz'),
+                            onPressed: activarDictadoVoz,
+                            icon: Icon(
+                              _isListening ? Icons.stop : Icons.mic,
+                              size: 18,
+                            ),
+                            label: Text(
+                              _isListening ? 'Escuchando...' : 'Dictar por voz',
+                            ),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        key: const Key('btn_orden_voz'),
+                        onPressed: activarOrdenVoz,
+                        icon: Icon(
+                          _isCommandListening
+                              ? Icons.stop
+                              : Icons.record_voice_over,
+                        ),
+                        label: Text(
+                          _isCommandListening
+                              ? 'Escuchando orden...'
+                              : 'Orden por voz',
+                        ),
+                      ),
+                      if (_isCommandListening)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Text(
+                            'Di: «Cierra la incidencia del proyector del aula 12» o «Cuántas incidencias abiertas hay».',
+                            key: Key('estado_orden_voz'),
+                          ),
+                        ),
+                      OutlinedButton.icon(
+                        key: const Key('btn_sacudida_urgente'),
+                        onPressed: crearIncidenciaPorSacudida,
+                        icon: const Icon(Icons.vibration),
+                        label: const Text('Simular sacudida: crear urgente'),
+                      ),
+                      if (_isListening || _speechError != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              _isListening
+                                  ? Icons.graphic_eq
+                                  : Icons.info_outline,
+                              size: 18,
+                              color: _isListening
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.error,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _isListening
+                                    ? 'Escuchando... habla ahora. Pulsa de nuevo para detener.'
+                                    : _speechError!,
+                                key: const Key('estado_dictado_voz'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: _isListening
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: const Key('input_descripcion'),
                         controller: _descripcionCtrl,
                         maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: 'Descripción de la avería',
-                          hintText: 'Detalla el problema (p. ej. pantalla azul, tecla rota...)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.description),
+                        decoration: InputDecoration(
+                          labelText: 'Descripción de la avería *',
+                          hintText: 'Detalla el problema (p. ej. pantalla azul, no enciende, tecla rota...)',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.description),
+                          suffixIcon: Tooltip(
+                            message: _isListening
+                                ? 'Detener dictado'
+                                : 'Dictar descripción por voz',
+                            child: IconButton(
+                              key: const Key('btn_dictado_voz_suffix'),
+                              icon: Icon(_isListening ? Icons.stop : Icons.mic),
+                              onPressed: activarDictadoVoz,
+                            ),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -231,23 +627,28 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               ),
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 3: Selector de Prioridad con Chips semánticos
+              // PASO 4: Selector de Prioridad con Chips semánticos
               PrioridadChipsSelector(
                 prioridadSeleccionada: _selectedPrioridad,
-                onPrioridadChanged: (p) => setState(() => _selectedPrioridad = p),
+                onPrioridadChanged: (p) =>
+                    setState(() => _selectedPrioridad = p),
               ),
               const SizedBox(height: 16),
 
-              // EXTRACT WIDGET 4: Previsualización reactiva del Ticket en tiempo real
+              // Previsualización reactiva del Ticket en tiempo real
               LiveTicketPreviewCard(
-                aulaNombre: _aulasCtrl.aulas
-                    .where((a) => a.id == _selectedAulaId)
-                    .map((a) => a.nombre)
-                    .firstOrNull ?? 'Aula no seleccionada',
-                equipoCodigo: _equiposCtrl.equipos
-                    .where((e) => e.id == _selectedEquipoId)
-                    .map((e) => '${e.codigo} (${e.tipo})')
-                    .firstOrNull ?? 'Equipo no seleccionado',
+                aulaNombre:
+                    _aulasCtrl.aulas
+                        .where((a) => a.id == _selectedAulaId)
+                        .map((a) => a.nombre)
+                        .firstOrNull ??
+                    'Aula no seleccionada',
+                equipoCodigo:
+                    _equiposCtrl.equipos
+                        .where((e) => e.id == _selectedEquipoId)
+                        .map((e) => '${e.codigo} (${e.tipo})')
+                        .firstOrNull ??
+                    'Equipo no seleccionado',
                 descripcion: _descripcionCtrl.text.isEmpty
                     ? 'Sin descripción introducida'
                     : _descripcionCtrl.text,
@@ -256,11 +657,12 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
               ),
               const SizedBox(height: 24),
 
-              // EXTRACT WIDGET 5: Botones de Acción
+              // Botones de Acción
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
+                      key: const Key('btn_cancelar_incidencia'),
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Cancelar y Volver'),
                     ),
@@ -268,7 +670,8 @@ class _NuevaIncidenciaScreenState extends State<NuevaIncidenciaScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: _isSaving ? null : _guardarIncidencia,
+                      key: const Key('btn_guardar_incidencia'),
+                      onPressed: _isSaving ? null : guardarIncidencia,
                       icon: _isSaving
                           ? const SizedBox(
                               width: 16,
@@ -318,18 +721,40 @@ class UbicacionSelectorWidget extends StatelessWidget {
         ? equiposCtrl.equipos.where((e) => e.aulaId == selectedAulaId).toList()
         : <Equipo>[];
 
+    final currentAulaValue = aulas.any((a) => a.id == selectedAulaId)
+        ? selectedAulaId
+        : null;
+    final currentEquipoValue = equiposAula.any((e) => e.id == selectedEquipoId)
+        ? selectedEquipoId
+        : null;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ubicación y Dispositivo', style: theme.textTheme.titleSmall),
+            Row(
+              children: [
+                Icon(
+                  Icons.meeting_room_outlined,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Ubicación y Dispositivo',
+                  style: theme.textTheme.titleSmall,
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
-              initialValue: selectedAulaId,
+              key: const Key('dropdown_aula'),
+              initialValue: currentAulaValue,
               decoration: const InputDecoration(
-                labelText: 'Aula / Espacio',
+                labelText: 'Aula / Espacio *',
+                hintText: 'Selecciona el aula',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.meeting_room),
               ),
@@ -339,23 +764,44 @@ class UbicacionSelectorWidget extends StatelessWidget {
                   child: Text('${a.nombre} (P${a.planta})'),
                 );
               }).toList(),
+              validator: (val) {
+                if (val == null) {
+                  return 'Por favor, selecciona un aula.';
+                }
+                return null;
+              },
               onChanged: onAulaChanged,
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              initialValue: selectedEquipoId,
-              decoration: const InputDecoration(
-                labelText: 'Equipo Afectado',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.devices),
+            KeyedSubtree(
+              key: ValueKey('subtree_equipo_${selectedAulaId ?? "none"}'),
+              child: DropdownButtonFormField<int>(
+                key: const Key('dropdown_equipo'),
+                initialValue: currentEquipoValue,
+                decoration: InputDecoration(
+                  labelText: 'Equipo Afectado *',
+                  hintText: selectedAulaId == null
+                      ? 'Selecciona un aula primero'
+                      : (equiposAula.isEmpty
+                            ? 'No hay equipos en esta aula'
+                            : 'Selecciona el equipo'),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.devices),
+                ),
+                items: equiposAula.map((e) {
+                  return DropdownMenuItem<int>(
+                    value: e.id,
+                    child: Text('${e.codigo} • ${e.tipo}'),
+                  );
+                }).toList(),
+                validator: (val) {
+                  if (val == null) {
+                    return 'Por favor, selecciona un equipo.';
+                  }
+                  return null;
+                },
+                onChanged: equiposAula.isEmpty ? null : onEquipoChanged,
               ),
-              items: equiposAula.map((e) {
-                return DropdownMenuItem<int>(
-                  value: e.id,
-                  child: Text('${e.codigo} • ${e.tipo}'),
-                );
-              }).toList(),
-              onChanged: onEquipoChanged,
             ),
           ],
         ),
@@ -380,15 +826,30 @@ class PrioridadChipsSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
+    final incidenciasColors =
+        theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     return Card(
+      key: const Key('card_prioridad_selector'),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nivel de Urgencia (Prioridad)', style: theme.textTheme.titleSmall),
+            Row(
+              children: [
+                Icon(
+                  Icons.flag_outlined,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Nivel de Urgencia (Prioridad)',
+                  style: theme.textTheme.titleSmall,
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -398,11 +859,16 @@ class PrioridadChipsSelector extends StatelessWidget {
                 final chipColor = incidenciasColors.colorParaPrioridad(p);
 
                 return ChoiceChip(
+                  key: Key('chip_prioridad_${p.name}'),
                   label: Text(
                     p.value,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : theme.colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected
+                          ? Colors.white
+                          : theme.colorScheme.onSurface,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                   selected: isSelected,
@@ -444,7 +910,8 @@ class LiveTicketPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final incidenciasColors = theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
+    final incidenciasColors =
+        theme.extension<IncidenciasColors>() ?? IncidenciasColors.light;
 
     return Container(
       width: double.infinity,
@@ -459,7 +926,11 @@ class LiveTicketPreviewCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.preview_outlined, color: colorScheme.primary, size: 20),
+              Icon(
+                Icons.preview_outlined,
+                color: colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Previsualización del Ticket IES',
@@ -474,7 +945,9 @@ class LiveTicketPreviewCard extends StatelessWidget {
                   prioridad.value,
                   style: const TextStyle(color: Colors.white, fontSize: 11),
                 ),
-                backgroundColor: incidenciasColors.colorParaPrioridad(prioridad),
+                backgroundColor: incidenciasColors.colorParaPrioridad(
+                  prioridad,
+                ),
                 visualDensity: VisualDensity.compact,
                 side: BorderSide.none,
               ),
@@ -483,16 +956,22 @@ class LiveTicketPreviewCard extends StatelessWidget {
           const Divider(height: 16),
           Text(
             'Ubicación: $aulaNombre',
-            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
           ),
           Text(
             'Dispositivo: $equipoCodigo',
-            style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.secondary),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.secondary,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             '"$descripcion"',
-            style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),

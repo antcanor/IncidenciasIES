@@ -56,6 +56,25 @@ class IncidenciaRepository {
     return maps.map((map) => Incidencia.fromMap(map)).toList();
   }
 
+  /// Cuenta incidencias activas (abiertas o en proceso) agrupadas por equipo.
+  Future<Map<int, int>> countActiveByEquipoIds(Iterable<int> equipoIds) async {
+    final ids = equipoIds.toList();
+    if (ids.isEmpty) return {};
+    final db = await _db;
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    final rows = await db.rawQuery('''
+      SELECT equipo_id, COUNT(*) AS total
+      FROM incidencia
+      WHERE equipo_id IN ($placeholders)
+        AND estado IN (?, ?)
+      GROUP BY equipo_id
+    ''', [...ids, Estado.abierta.value, Estado.enProceso.value]);
+    return {
+      for (final row in rows)
+        row['equipo_id'] as int: (row['total'] as num).toInt(),
+    };
+  }
+
   /// Filtra incidencias por su estado.
   Future<List<Incidencia>> getByEstado(Estado estado) async {
     final db = await _db;
@@ -66,6 +85,19 @@ class IncidenciaRepository {
       orderBy: 'fecha DESC',
     );
     return maps.map((map) => Incidencia.fromMap(map)).toList();
+  }
+
+  /// Cuenta incidencias que se encuentran en cualquiera de los estados indicados.
+  Future<int> countByStates(Iterable<Estado> states) async {
+    final values = states.map((state) => state.value).toList();
+    if (values.isEmpty) return 0;
+    final db = await _db;
+    final placeholders = List.filled(values.length, '?').join(', ');
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS total FROM incidencia WHERE estado IN ($placeholders)',
+      values,
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   /// Filtra incidencias por su nivel de prioridad.
@@ -141,6 +173,32 @@ class IncidenciaRepository {
     return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
   }
 
+  /// Obtiene el historial completo de un equipo para la superposición AR.
+  Future<List<IncidenciaDetalle>> getIncidenciasPorEquipo(int equipoId) async {
+    final db = await _db;
+    const sql = '''
+      SELECT
+        i.id AS id,
+        i.equipo_id AS equipo_id,
+        i.descripcion AS descripcion,
+        i.prioridad AS prioridad,
+        i.estado AS estado,
+        i.fecha AS fecha,
+        e.tipo AS equipo_tipo,
+        e.codigo AS equipo_codigo,
+        a.id AS aula_id,
+        a.nombre AS aula_nombre,
+        a.planta AS aula_planta
+      FROM incidencia i
+      INNER JOIN equipo e ON i.equipo_id = e.id
+      INNER JOIN aula a ON e.aula_id = a.id
+      WHERE i.equipo_id = ?
+      ORDER BY i.fecha DESC
+    ''';
+    final maps = await db.rawQuery(sql, [equipoId]);
+    return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
+  }
+
   /// Consulta con JOIN doble (incidencia -> equipo -> aula) para todas las incidencias.
   Future<List<IncidenciaDetalle>> getIncidenciasConDetalle() async {
     final db = await _db;
@@ -163,6 +221,58 @@ class IncidenciaRepository {
       ORDER BY i.fecha DESC
     ''';
     final maps = await db.rawQuery(sql);
+    return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
+  }
+
+  /// Obtiene únicamente incidencias cerradas mediante JOIN doble, con filtros
+  /// opcionales para aula, texto libre y día de la incidencia.
+  Future<List<IncidenciaDetalle>> getHistorialCerradas({
+    int? aulaId,
+    String? texto,
+    DateTime? fecha,
+  }) async {
+    final db = await _db;
+    final conditions = <String>["i.estado = ?"];
+    final args = <Object>[Estado.cerrada.value];
+
+    if (aulaId != null) {
+      conditions.add('a.id = ?');
+      args.add(aulaId);
+    }
+    if (texto != null && texto.trim().isNotEmpty) {
+      conditions.add('''
+        (LOWER(i.descripcion) LIKE ? OR
+         LOWER(e.codigo) LIKE ? OR
+         LOWER(e.tipo) LIKE ? OR
+         LOWER(a.nombre) LIKE ?)
+      ''');
+      final pattern = '%${texto.trim().toLowerCase()}%';
+      args.addAll([pattern, pattern, pattern, pattern]);
+    }
+    if (fecha != null) {
+      conditions.add("date(i.fecha) = date(?)");
+      args.add(fecha.toIso8601String());
+    }
+
+    final maps = await db.rawQuery('''
+      SELECT
+        i.id AS id,
+        i.equipo_id AS equipo_id,
+        i.descripcion AS descripcion,
+        i.prioridad AS prioridad,
+        i.estado AS estado,
+        i.fecha AS fecha,
+        e.tipo AS equipo_tipo,
+        e.codigo AS equipo_codigo,
+        a.id AS aula_id,
+        a.nombre AS aula_nombre,
+        a.planta AS aula_planta
+      FROM incidencia i
+      INNER JOIN equipo e ON i.equipo_id = e.id
+      INNER JOIN aula a ON e.aula_id = a.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY i.fecha DESC
+    ''', args);
     return maps.map((map) => IncidenciaDetalle.fromMap(map)).toList();
   }
 
